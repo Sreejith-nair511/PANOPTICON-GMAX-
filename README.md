@@ -1,2 +1,2 @@
-# ECHO
-An AI forensic intelligence platform.
+# PANOPTICON 
+An AI-powered forensic vision intelligence platform that reconstructs crime scenes from fragmented visual evidence using computer vision, deep learning, multi-camera synchronization, 3D scene reconstruction, and spatio-temporal reasoning. It enables investigators to automatically generate event timelines, track suspects and objects across multiple cameras, analyze behavioral interactions, verify evidence consistency, and produce explainable AI-assisted forensic reports.
