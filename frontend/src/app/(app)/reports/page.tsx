@@ -240,7 +240,21 @@ export default function ReportsPage() {
                 <Printer className="w-4 h-4" />
                 Print
               </button>
-              <button className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium bg-accent text-accent-foreground hover:bg-accent-glow transition-colors">
+              <button
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium bg-accent text-accent-foreground hover:bg-accent-glow transition-colors"
+                onClick={() => {
+                  import('sonner').then(({ toast }) => {
+                    toast.promise(
+                      new Promise(res => setTimeout(res, 2000)),
+                      {
+                        loading: 'Generating PDF...',
+                        success: 'Report downloaded',
+                        error: 'PDF generation failed',
+                      }
+                    );
+                  });
+                }}
+              >
                 <Download className="w-4 h-4" />
                 Download PDF
               </button>

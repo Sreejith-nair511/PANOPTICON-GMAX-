@@ -16,6 +16,7 @@ import { StatsCard } from '@/components/dashboard/StatsCard';
 import { RecentCases } from '@/components/dashboard/RecentCases';
 import { ActivityFeed } from '@/components/dashboard/ActivityFeed';
 import { SystemHealth } from '@/components/dashboard/SystemHealth';
+import { DetectionChart, CaseActivityChart } from '@/components/dashboard/DetectionChart';
 import { mockCases, mockDashboardStats, mockAlerts } from '@/lib/mockData';
 import { formatTimestamp } from '@/lib/utils';
 
@@ -200,6 +201,16 @@ export default function DashboardPage() {
         {/* AI Processing Summary — 2 cols */}
         <motion.div variants={itemVariants} className="lg:col-span-2">
           <AIProcessingSummary />
+        </motion.div>
+
+        {/* Detection chart */}
+        <motion.div variants={itemVariants}>
+          <DetectionChart />
+        </motion.div>
+
+        {/* Case activity chart */}
+        <motion.div variants={itemVariants}>
+          <CaseActivityChart />
         </motion.div>
       </motion.div>
     </div>
