@@ -1,0 +1,331 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+@layer base {
+  :root {
+    /* PANOPTICON Dark Theme - Default */
+    --background: 222 47% 5%;
+    --foreground: 210 40% 95%;
+
+    --surface: 222 44% 7%;
+    --surface-raised: 222 40% 10%;
+    --surface-overlay: 222 38% 13%;
+
+    --card: 222 44% 8%;
+    --card-foreground: 210 40% 95%;
+
+    --popover: 222 44% 8%;
+    --popover-foreground: 210 40% 95%;
+
+    --primary: 210 100% 56%;
+    --primary-foreground: 222 47% 5%;
+    --primary-dim: 210 100% 56% / 0.15;
+
+    --secondary: 222 38% 15%;
+    --secondary-foreground: 210 40% 80%;
+
+    --muted: 222 38% 12%;
+    --muted-foreground: 215 20% 50%;
+
+    /* Electric Cyan accent */
+    --accent: 194 100% 43%;
+    --accent-foreground: 222 47% 5%;
+    --accent-glow: 194 100% 60%;
+    --accent-dim: 194 100% 43% / 0.12;
+
+    --success: 142 71% 45%;
+    --success-foreground: 144 61% 10%;
+    --success-dim: 142 71% 45% / 0.15;
+
+    --warning: 38 92% 55%;
+    --warning-foreground: 38 92% 10%;
+    --warning-dim: 38 92% 55% / 0.15;
+
+    --danger: 0 84% 55%;
+    --danger-foreground: 0 84% 10%;
+    --danger-dim: 0 84% 55% / 0.15;
+
+    --destructive: 0 84% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 222 38% 15%;
+    --input: 222 38% 12%;
+    --ring: 194 100% 43%;
+
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    @apply antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+    background-image:
+      linear-gradient(rgba(0, 180, 216, 0.015) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0, 180, 216, 0.015) 1px, transparent 1px);
+    background-size: 32px 32px;
+    background-attachment: fixed;
+  }
+
+  /* Scrollbar styling */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: hsl(222 44% 7%);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: hsl(222 38% 20%);
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(194 100% 43% / 0.5);
+  }
+
+  /* Selection */
+  ::selection {
+    background: hsl(194 100% 43% / 0.3);
+    color: hsl(210 40% 95%);
+  }
+
+  /* Focus visible */
+  :focus-visible {
+    outline: 2px solid hsl(194 100% 43%);
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  /* Glass panels */
+  .glass {
+    background: rgba(13, 21, 38, 0.7);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(0, 180, 216, 0.1);
+  }
+
+  .glass-subtle {
+    background: rgba(13, 21, 38, 0.4);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  .glass-strong {
+    background: rgba(10, 15, 30, 0.85);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(0, 180, 216, 0.15);
+  }
+
+  /* Glow effects */
+  .glow-accent {
+    box-shadow: 0 0 20px hsl(194 100% 43% / 0.3);
+  }
+
+  .glow-accent-sm {
+    box-shadow: 0 0 8px hsl(194 100% 43% / 0.2);
+  }
+
+  .text-glow {
+    text-shadow: 0 0 10px hsl(194 100% 43% / 0.6);
+  }
+
+  /* Status indicators */
+  .status-dot {
+    @apply w-2 h-2 rounded-full;
+  }
+
+  .status-dot-active {
+    @apply status-dot bg-success animate-pulse;
+    box-shadow: 0 0 6px hsl(142 71% 45%);
+  }
+
+  .status-dot-warning {
+    @apply status-dot bg-warning;
+    box-shadow: 0 0 6px hsl(38 92% 55%);
+  }
+
+  .status-dot-danger {
+    @apply status-dot bg-danger animate-pulse;
+    box-shadow: 0 0 6px hsl(0 84% 55%);
+  }
+
+  .status-dot-inactive {
+    @apply status-dot bg-muted-foreground;
+  }
+
+  /* Scanline overlay for video elements */
+  .scanlines::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 0, 0, 0.08) 2px,
+      rgba(0, 0, 0, 0.08) 4px
+    );
+    pointer-events: none;
+    z-index: 10;
+  }
+
+  /* Card variants */
+  .card-panel {
+    @apply rounded-lg border border-border bg-card;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.6);
+  }
+
+  .card-panel:hover {
+    border-color: rgba(0, 180, 216, 0.2);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5), 0 0 1px rgba(0,180,216,0.2);
+  }
+
+  /* Confidence bar */
+  .confidence-bar {
+    @apply h-1 rounded-full bg-muted overflow-hidden;
+  }
+
+  .confidence-fill {
+    @apply h-full rounded-full transition-all duration-500;
+  }
+
+  /* Badge variants */
+  .badge-active {
+    @apply text-xs font-medium px-2 py-0.5 rounded border;
+    background: hsl(142 71% 45% / 0.15);
+    border-color: hsl(142 71% 45% / 0.3);
+    color: hsl(142 71% 60%);
+  }
+
+  .badge-pending {
+    @apply text-xs font-medium px-2 py-0.5 rounded border;
+    background: hsl(38 92% 55% / 0.15);
+    border-color: hsl(38 92% 55% / 0.3);
+    color: hsl(38 92% 65%);
+  }
+
+  .badge-critical {
+    @apply text-xs font-medium px-2 py-0.5 rounded border;
+    background: hsl(0 84% 55% / 0.15);
+    border-color: hsl(0 84% 55% / 0.3);
+    color: hsl(0 84% 70%);
+  }
+
+  .badge-info {
+    @apply text-xs font-medium px-2 py-0.5 rounded border;
+    background: hsl(194 100% 43% / 0.12);
+    border-color: hsl(194 100% 43% / 0.25);
+    color: hsl(194 100% 60%);
+  }
+
+  /* Timeline */
+  .timeline-line {
+    @apply absolute left-4 top-0 bottom-0 w-px;
+    background: linear-gradient(to bottom, transparent, hsl(194 100% 43% / 0.3), transparent);
+  }
+
+  /* Code/terminal style */
+  .terminal {
+    @apply font-mono text-sm bg-[#080d1a] border border-border rounded-lg p-4;
+    color: hsl(194 100% 70%);
+  }
+
+  /* Metric cards */
+  .metric-card {
+    @apply card-panel p-4 transition-all duration-200 cursor-default select-none;
+  }
+
+  .metric-card:hover {
+    @apply -translate-y-0.5;
+    border-color: rgba(0, 180, 216, 0.25);
+  }
+
+  /* Loading skeleton */
+  .skeleton {
+    @apply bg-muted rounded animate-pulse;
+  }
+
+  /* Data table */
+  .data-row {
+    @apply border-b border-border/50 hover:bg-surface-raised/50 transition-colors duration-100;
+  }
+
+  /* Navigation active state */
+  .nav-item-active {
+    background: rgba(0, 180, 216, 0.1);
+    border-left: 2px solid hsl(194 100% 43%);
+    color: hsl(194 100% 65%);
+  }
+
+  .nav-item {
+    @apply flex items-center gap-3 px-3 py-2 rounded-md text-sm text-muted-foreground transition-all duration-150 cursor-pointer;
+    border-left: 2px solid transparent;
+  }
+
+  .nav-item:hover {
+    @apply text-foreground;
+    background: rgba(255, 255, 255, 0.04);
+    border-left-color: rgba(0, 180, 216, 0.3);
+  }
+}
+
+@layer utilities {
+  /* Text gradients */
+  .text-gradient-cyan {
+    background: linear-gradient(135deg, hsl(194 100% 60%), hsl(210 100% 65%));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .text-gradient-blue {
+    background: linear-gradient(135deg, hsl(210 100% 56%), hsl(194 100% 43%));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Border gradients */
+  .border-gradient {
+    background: linear-gradient(hsl(222 44% 8%), hsl(222 44% 8%)) padding-box,
+      linear-gradient(135deg, hsl(194 100% 43% / 0.4), hsl(210 100% 56% / 0.2)) border-box;
+    border: 1px solid transparent;
+  }
+
+  /* Numeric font */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* No scrollbar */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  /* Clamp lines */
+  .line-clamp-1 { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; }
+  .line-clamp-2 { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .line-clamp-3 { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
+}
