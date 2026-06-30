@@ -1,0 +1,109 @@
+version: "3.9"
+
+services:
+  # -----------------------------------------------
+  # PostgreSQL
+  # -----------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: panopticon_db
+    environment:
+      POSTGRES_USER: panopticon
+      POSTGRES_PASSWORD: panopticon
+      POSTGRES_DB: panopticon
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U panopticon"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # -----------------------------------------------
+  # Redis
+  # -----------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: panopticon_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # -----------------------------------------------
+  # ChromaDB
+  # -----------------------------------------------
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: panopticon_chroma
+    ports:
+      - "8001:8000"
+    volumes:
+      - chroma_data:/chroma/.chroma
+    environment:
+      CHROMA_SERVER_HOST: "0.0.0.0"
+      ALLOW_RESET: "true"
+    restart: unless-stopped
+
+  # -----------------------------------------------
+  # FastAPI Backend
+  # -----------------------------------------------
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: panopticon_api
+    environment:
+      DATABASE_URL: "postgresql+asyncpg://panopticon:panopticon@postgres:5432/panopticon"
+      REDIS_URL: "redis://redis:6379/0"
+      CHROMA_HOST: "chromadb"
+      CHROMA_PORT: "8000"
+      CELERY_BROKER_URL: "redis://redis:6379/1"
+      CELERY_RESULT_BACKEND: "redis://redis:6379/2"
+      ENVIRONMENT: "development"
+      DEBUG: "true"
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../backend:/app
+      - evidence_storage:/app/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # -----------------------------------------------
+  # Frontend (Next.js)
+  # -----------------------------------------------
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    container_name: panopticon_frontend
+    environment:
+      NEXT_PUBLIC_API_URL: "http://localhost:8000"
+      NEXT_PUBLIC_WS_URL: "ws://localhost:8000"
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+  chroma_data:
+  evidence_storage:
