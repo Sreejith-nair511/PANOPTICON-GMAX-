@@ -1,22 +1,25 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuthStore } from '@/store/authStore';
 
 export default function RootPage() {
-  const router = useRouter();
-  const { isAuthenticated } = useAuthStore();
-
   useEffect(() => {
-    // No hydration wait — directly check auth state from Zustand
-    // (Zustand persist loads synchronously on first render)
-    if (isAuthenticated) {
-      router.replace('/dashboard');
-    } else {
-      router.replace('/auth/login');
+    // Get auth state directly from localStorage to avoid hydration wait
+    const stored = localStorage.getItem('panopticon-auth');
+    let isAuthenticated = false;
+    
+    if (stored) {
+      try {
+        const { state } = JSON.parse(stored);
+        isAuthenticated = state?.isAuthenticated && state?.token;
+      } catch {
+        // Invalid storage, treat as not authenticated
+      }
     }
-  }, [isAuthenticated, router]);
 
-  return null; // No spinner, instant redirect
+    // Immediate redirect - no delays
+    window.location.replace(isAuthenticated ? '/dashboard' : '/auth/login');
+  }, []);
+
+  return null;
 }

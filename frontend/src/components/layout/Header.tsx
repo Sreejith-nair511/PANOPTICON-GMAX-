@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -195,18 +196,20 @@ export function Header() {
                 </div>
                 <div className="p-2">
                   {[
-                    { label: 'Profile', icon: User, href: '/settings/profile' },
+                    { label: 'Profile', icon: User, href: '/settings' },
                     { label: 'Settings', icon: Settings, href: '/settings' },
                   ].map((item) => {
                     const Icon = item.icon;
                     return (
-                      <button
+                      <Link
                         key={item.label}
+                        href={item.href}
+                        onClick={() => setShowUserMenu(false)}
                         className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-surface-raised transition-colors text-left"
                       >
                         <Icon className="w-4 h-4" />
                         {item.label}
-                      </button>
+                      </Link>
                     );
                   })}
                   <div className="my-1 border-t border-border" />

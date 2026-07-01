@@ -191,7 +191,13 @@ export default function DashboardPage() {
             <p className="text-sm font-semibold text-danger">{alert.title}</p>
             <p className="text-xs text-muted-foreground mt-0.5">{alert.message}</p>
           </div>
-          <button className="text-xs text-danger/70 hover:text-danger border border-danger/20 hover:border-danger/40 px-3 py-1.5 rounded-lg transition-colors">
+          <button
+            onClick={() => {
+              // Mark alert as read (backend integration needed)
+              console.log('Investigate alert:', alert.id);
+            }}
+            className="text-xs text-danger/70 hover:text-danger border border-danger/20 hover:border-danger/40 px-3 py-1.5 rounded-lg transition-colors"
+          >
             Investigate
           </button>
         </motion.div>
