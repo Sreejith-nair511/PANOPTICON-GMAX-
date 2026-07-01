@@ -1,7 +1,8 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import CrimeScene from "@/components/scene3d/CrimeScene";
 import {
   Search,
   Play,
@@ -27,24 +28,40 @@ import {
   CheckCircle,
   AlertTriangle,
   Target,
-} from 'lucide-react';
-import { mockEvidence, mockTimeline, mockSuspects, mockCases } from '@/lib/mockData';
-import { ConfidenceBadge } from '@/components/ui/ConfidenceBadge';
-import { StatusBadge } from '@/components/ui/StatusBadge';
-import { cn, formatTimestamp, formatDuration, formatVideoTimestamp } from '@/lib/utils';
+} from "lucide-react";
+import {
+  mockEvidence,
+  mockTimeline,
+  mockSuspects,
+  mockCases,
+} from "@/lib/mockData";
+import { ConfidenceBadge } from "@/components/ui/ConfidenceBadge";
+import { StatusBadge } from "@/components/ui/StatusBadge";
+import {
+  cn,
+  formatTimestamp,
+  formatDuration,
+  formatVideoTimestamp,
+} from "@/lib/utils";
 
-type PanelMode = 'single' | 'split' | 'quad';
+type PanelMode = "single" | "split" | "quad" | "scene";
 
 export default function InvestigationPage() {
-  const [panelMode, setPanelMode] = useState<PanelMode>('split');
+  const [panelMode, setPanelMode] = useState<PanelMode>("split");
   const [playing, setPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(870); // ~14:32
-  const [activeTimestamp, setActiveTimestamp] = useState<string | null>('tl-003');
+  const [activeTimestamp, setActiveTimestamp] = useState<string | null>(
+    "tl-003",
+  );
   const [selectedCamera, setSelectedCamera] = useState(0);
   const [zoom, setZoom] = useState(1);
 
   const activeCase = mockCases[0];
-  const caseEvidence = mockEvidence.filter((e) => e.caseId === activeCase.id && (e.type === 'video' || e.type === 'bodycam'));
+  const caseEvidence = mockEvidence.filter(
+    (e) =>
+      e.caseId === activeCase.id &&
+      (e.type === "video" || e.type === "bodycam"),
+  );
   const caseTimeline = mockTimeline.filter((t) => t.caseId === activeCase.id);
   const caseSuspects = mockSuspects.filter((s) => s.caseId === activeCase.id);
 
@@ -57,11 +74,19 @@ export default function InvestigationPage() {
       <div className="w-72 shrink-0 border-r border-border flex flex-col bg-[#070c19] overflow-hidden">
         {/* Case header */}
         <div className="p-4 border-b border-border">
-          <p className="text-2xs font-mono text-muted-foreground/60 mb-1">{activeCase.caseNumber}</p>
-          <h2 className="text-sm font-semibold leading-snug line-clamp-2">{activeCase.title}</h2>
+          <p className="text-2xs font-mono text-muted-foreground/60 mb-1">
+            {activeCase.caseNumber}
+          </p>
+          <h2 className="text-sm font-semibold leading-snug line-clamp-2">
+            {activeCase.title}
+          </h2>
           <div className="flex items-center gap-2 mt-2">
             <StatusBadge status={activeCase.status} />
-            <ConfidenceBadge score={activeCase.confidenceScore} size="sm" showLabel={false} />
+            <ConfidenceBadge
+              score={activeCase.confidenceScore}
+              size="sm"
+              showLabel={false}
+            />
           </div>
         </div>
 
@@ -80,13 +105,23 @@ export default function InvestigationPage() {
                 className="flex items-center gap-2.5 p-2 rounded-lg bg-surface border border-border hover:border-accent/30 transition-colors cursor-pointer"
               >
                 <div className="w-8 h-8 rounded-lg overflow-hidden bg-surface-raised shrink-0">
-                  <img src={s.thumbnailUrl} alt="" className="w-full h-full object-cover" />
+                  <img
+                    src={s.thumbnailUrl}
+                    alt=""
+                    className="w-full h-full object-cover"
+                  />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-medium truncate">{s.label}</p>
-                  <p className="text-2xs text-muted-foreground">{s.cameras.length} cameras</p>
+                  <p className="text-2xs text-muted-foreground">
+                    {s.cameras.length} cameras
+                  </p>
                 </div>
-                <ConfidenceBadge score={s.confidenceScore} size="sm" showLabel={false} />
+                <ConfidenceBadge
+                  score={s.confidenceScore}
+                  size="sm"
+                  showLabel={false}
+                />
               </div>
             ))}
           </div>
@@ -107,10 +142,10 @@ export default function InvestigationPage() {
                 {caseTimeline.map((event) => {
                   const isActive = event.id === activeTimestamp;
                   const significanceColor = {
-                    critical: 'border-danger text-danger',
-                    high: 'border-warning text-warning',
-                    medium: 'border-accent text-accent',
-                    low: 'border-muted text-muted-foreground',
+                    critical: "border-danger text-danger",
+                    high: "border-warning text-warning",
+                    medium: "border-accent text-accent",
+                    low: "border-muted text-muted-foreground",
                   }[event.significance];
 
                   return (
@@ -118,14 +153,20 @@ export default function InvestigationPage() {
                       key={event.id}
                       onClick={() => setActiveTimestamp(event.id)}
                       className={cn(
-                        'w-full flex items-start gap-2.5 p-2 rounded-lg text-left transition-all duration-150',
-                        isActive ? 'bg-accent/10 border border-accent/30' : 'hover:bg-surface-raised border border-transparent'
+                        "w-full flex items-start gap-2.5 p-2 rounded-lg text-left transition-all duration-150",
+                        isActive
+                          ? "bg-accent/10 border border-accent/30"
+                          : "hover:bg-surface-raised border border-transparent",
                       )}
                     >
-                      <div className={cn(
-                        'w-5 h-5 rounded-full border flex items-center justify-center shrink-0 mt-0.5',
-                        isActive ? 'bg-accent border-accent' : significanceColor
-                      )}>
+                      <div
+                        className={cn(
+                          "w-5 h-5 rounded-full border flex items-center justify-center shrink-0 mt-0.5",
+                          isActive
+                            ? "bg-accent border-accent"
+                            : significanceColor,
+                        )}
+                      >
                         {event.verified ? (
                           <CheckCircle className="w-2.5 h-2.5 text-white" />
                         ) : (
@@ -134,7 +175,7 @@ export default function InvestigationPage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-2xs font-mono text-muted-foreground/60">
-                          {formatTimestamp(event.timestamp, 'HH:mm:ss')}
+                          {formatTimestamp(event.timestamp, "HH:mm:ss")}
                         </p>
                         <p className="text-xs font-medium text-foreground line-clamp-1">
                           {event.title}
@@ -159,20 +200,28 @@ export default function InvestigationPage() {
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground">Layout:</span>
             <div className="flex items-center border border-border rounded-lg overflow-hidden">
-              {(['single', 'split', 'quad'] as PanelMode[]).map((mode) => (
-                <button
-                  key={mode}
-                  onClick={() => setPanelMode(mode)}
-                  className={cn(
-                    'px-3 py-1.5 text-xs font-medium transition-colors border-r border-border last:border-r-0',
-                    panelMode === mode
-                      ? 'bg-accent/15 text-accent'
-                      : 'text-muted-foreground hover:text-foreground'
-                  )}
-                >
-                  {mode === 'single' ? '1×' : mode === 'split' ? '2×' : '4×'}
-                </button>
-              ))}
+              {(["single", "split", "quad", "scene"] as PanelMode[]).map(
+                (mode) => (
+                  <button
+                    key={mode}
+                    onClick={() => setPanelMode(mode)}
+                    className={cn(
+                      "px-3 py-1.5 text-xs font-medium transition-colors border-r border-border last:border-r-0",
+                      panelMode === mode
+                        ? "bg-accent/15 text-accent"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    {mode === "single"
+                      ? "1×"
+                      : mode === "split"
+                        ? "2×"
+                        : mode === "quad"
+                          ? "4×"
+                          : "3D"}
+                  </button>
+                ),
+              )}
             </div>
           </div>
 
@@ -193,146 +242,196 @@ export default function InvestigationPage() {
         </div>
 
         {/* Video panels */}
-        <div
-          className={cn(
-            'flex-1 p-3 overflow-hidden',
-            panelMode === 'quad' ? 'grid grid-cols-2 grid-rows-2 gap-2' : panelMode === 'split' ? 'grid grid-cols-2 gap-2' : 'flex'
-          )}
-        >
-          {caseEvidence.slice(0, panelMode === 'single' ? 1 : panelMode === 'split' ? 2 : 4).map((ev, idx) => (
-            <VideoPanel
-              key={ev.id}
-              evidence={ev}
-              isActive={selectedCamera === idx}
-              onSelect={() => setSelectedCamera(idx)}
-              playing={playing && selectedCamera === idx}
-              currentTime={currentTime}
-              zoom={panelMode === 'single' ? zoom : 1}
-              showOverlays
-            />
-          ))}
-        </div>
+        {panelMode === "scene" ? (
+          <div className="flex-1 p-3 overflow-hidden">
+            <div className="w-full h-full rounded-xl overflow-hidden border border-border">
+              <CrimeScene />
+            </div>
+          </div>
+        ) : (
+          <div
+            className={cn(
+              "flex-1 p-3 overflow-hidden",
+              panelMode === "quad"
+                ? "grid grid-cols-2 grid-rows-2 gap-2"
+                : panelMode === "split"
+                  ? "grid grid-cols-2 gap-2"
+                  : "flex",
+            )}
+          >
+            {caseEvidence
+              .slice(
+                0,
+                panelMode === "single" ? 1 : panelMode === "split" ? 2 : 4,
+              )
+              .map((ev, idx) => (
+                <VideoPanel
+                  key={ev.id}
+                  evidence={ev}
+                  isActive={selectedCamera === idx}
+                  onSelect={() => setSelectedCamera(idx)}
+                  playing={playing && selectedCamera === idx}
+                  currentTime={currentTime}
+                  zoom={panelMode === "single" ? zoom : 1}
+                  showOverlays
+                />
+              ))}
+          </div>
+        )}
 
         {/* Playback controls */}
-        <div className="border-t border-border bg-[#080d1a] p-4 shrink-0">
-          {/* Timeline scrubber */}
-          <div className="mb-4 relative">
-            {/* Event markers */}
-            {caseTimeline.map((event) => {
-              const pct = ((new Date(event.timestamp).getHours() * 3600 +
-                new Date(event.timestamp).getMinutes() * 60 +
-                new Date(event.timestamp).getSeconds() - 14 * 3600) /
-                totalDuration) * 100;
-              const clampedPct = Math.max(0, Math.min(100, pct));
-              const color = {
-                critical: 'bg-danger',
-                high: 'bg-warning',
-                medium: 'bg-accent',
-                low: 'bg-muted-foreground',
-              }[event.significance];
-              return (
-                <button
-                  key={event.id}
-                  onClick={() => setActiveTimestamp(event.id)}
-                  className="absolute -top-1 z-10 group"
-                  style={{ left: `${clampedPct}%` }}
-                  title={event.title}
-                >
-                  <div className={cn('w-2 h-4 rounded-sm opacity-80 hover:opacity-100 hover:scale-110 transition-all', color)} />
-                  <div className="absolute bottom-5 left-1/2 -translate-x-1/2 w-40 bg-surface border border-border rounded-lg p-2 text-xs opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20 whitespace-nowrap overflow-hidden text-ellipsis">
-                    {event.title}
-                  </div>
-                </button>
-              );
-            })}
+        {panelMode !== "scene" && (
+          <div className="border-t border-border bg-[#080d1a] p-4 shrink-0">
+            {/* Timeline scrubber */}
+            <div className="mb-4 relative">
+              {/* Event markers */}
+              {caseTimeline.map((event) => {
+                const pct =
+                  ((new Date(event.timestamp).getHours() * 3600 +
+                    new Date(event.timestamp).getMinutes() * 60 +
+                    new Date(event.timestamp).getSeconds() -
+                    14 * 3600) /
+                    totalDuration) *
+                  100;
+                const clampedPct = Math.max(0, Math.min(100, pct));
+                const color = {
+                  critical: "bg-danger",
+                  high: "bg-warning",
+                  medium: "bg-accent",
+                  low: "bg-muted-foreground",
+                }[event.significance];
+                return (
+                  <button
+                    key={event.id}
+                    onClick={() => setActiveTimestamp(event.id)}
+                    className="absolute -top-1 z-10 group"
+                    style={{ left: `${clampedPct}%` }}
+                    title={event.title}
+                  >
+                    <div
+                      className={cn(
+                        "w-2 h-4 rounded-sm opacity-80 hover:opacity-100 hover:scale-110 transition-all",
+                        color,
+                      )}
+                    />
+                    <div className="absolute bottom-5 left-1/2 -translate-x-1/2 w-40 bg-surface border border-border rounded-lg p-2 text-xs opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20 whitespace-nowrap overflow-hidden text-ellipsis">
+                      {event.title}
+                    </div>
+                  </button>
+                );
+              })}
 
-            {/* Progress bar */}
-            <div
-              className="relative h-2 bg-surface-raised rounded-full cursor-pointer mt-4 overflow-visible"
-              onClick={(e) => {
-                const rect = e.currentTarget.getBoundingClientRect();
-                const pct = (e.clientX - rect.left) / rect.width;
-                setCurrentTime(Math.round(pct * totalDuration));
-              }}
-            >
-              <motion.div
-                className="h-full bg-accent rounded-full"
-                style={{ width: `${progressPct}%` }}
-              />
-              {/* Playhead */}
+              {/* Progress bar */}
               <div
-                className="absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full bg-white border-2 border-accent shadow-glow-sm transition-all"
-                style={{ left: `calc(${progressPct}% - 7px)` }}
-              />
+                className="relative h-2 bg-surface-raised rounded-full cursor-pointer mt-4 overflow-visible"
+                onClick={(e) => {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  const pct = (e.clientX - rect.left) / rect.width;
+                  setCurrentTime(Math.round(pct * totalDuration));
+                }}
+              >
+                <motion.div
+                  className="h-full bg-accent rounded-full"
+                  style={{ width: `${progressPct}%` }}
+                />
+                {/* Playhead */}
+                <div
+                  className="absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full bg-white border-2 border-accent shadow-glow-sm transition-all"
+                  style={{ left: `calc(${progressPct}% - 7px)` }}
+                />
+              </div>
+
+              {/* Time labels */}
+              <div className="flex justify-between mt-1">
+                <span className="text-2xs font-mono text-muted-foreground">
+                  14:30:00
+                </span>
+                <span className="text-2xs font-mono text-accent">
+                  {formatVideoTimestamp(currentTime)}
+                </span>
+                <span className="text-2xs font-mono text-muted-foreground">
+                  15:00:00
+                </span>
+              </div>
             </div>
 
-            {/* Time labels */}
-            <div className="flex justify-between mt-1">
-              <span className="text-2xs font-mono text-muted-foreground">14:30:00</span>
-              <span className="text-2xs font-mono text-accent">
-                {formatVideoTimestamp(currentTime)}
-              </span>
-              <span className="text-2xs font-mono text-muted-foreground">15:00:00</span>
+            {/* Controls row */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setCurrentTime(Math.max(0, currentTime - 30))}
+                  className="w-9 h-9 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-surface-raised transition-colors"
+                >
+                  <SkipBack className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setPlaying(!playing)}
+                  className="w-11 h-11 rounded-xl flex items-center justify-center bg-accent text-accent-foreground hover:bg-accent-glow transition-colors shadow-glow-sm"
+                >
+                  {playing ? (
+                    <Pause className="w-5 h-5" />
+                  ) : (
+                    <Play className="w-5 h-5 ml-0.5" />
+                  )}
+                </button>
+                <button
+                  onClick={() =>
+                    setCurrentTime(Math.min(totalDuration, currentTime + 30))
+                  }
+                  className="w-9 h-9 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-surface-raised transition-colors"
+                >
+                  <SkipForward className="w-4 h-4" />
+                </button>
+
+                {/* Speed */}
+                <select className="ml-2 px-2 py-1 text-xs bg-surface border border-border rounded-lg text-foreground focus:outline-none cursor-pointer">
+                  {["0.25×", "0.5×", "1×", "2×", "4×"].map((s) => (
+                    <option
+                      key={s}
+                      value={s}
+                      className="bg-[#0D1526]"
+                      selected={s === "1×"}
+                    >
+                      {s}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setZoom(Math.max(1, zoom - 0.25))}
+                  className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-surface-raised transition-colors border border-border"
+                >
+                  <ZoomOut className="w-3.5 h-3.5" />
+                </button>
+                <span className="text-xs font-mono text-muted-foreground w-10 text-center">
+                  {zoom.toFixed(2)}×
+                </span>
+                <button
+                  onClick={() => setZoom(Math.min(4, zoom + 0.25))}
+                  className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-surface-raised transition-colors border border-border"
+                >
+                  <ZoomIn className="w-3.5 h-3.5" />
+                </button>
+
+                <div className="w-px h-6 bg-border mx-1" />
+
+                <button className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-surface-raised transition-colors border border-border">
+                  <Bookmark className="w-3.5 h-3.5" />
+                  Bookmark
+                </button>
+                <button className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-surface-raised transition-colors border border-border">
+                  <Tag className="w-3.5 h-3.5" />
+                  Annotate
+                </button>
+                <button className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-surface-raised transition-colors border border-border">
+                  <Maximize2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
           </div>
-
-          {/* Controls row */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1">
-              <button onClick={() => setCurrentTime(Math.max(0, currentTime - 30))} className="w-9 h-9 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-surface-raised transition-colors">
-                <SkipBack className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => setPlaying(!playing)}
-                className="w-11 h-11 rounded-xl flex items-center justify-center bg-accent text-accent-foreground hover:bg-accent-glow transition-colors shadow-glow-sm"
-              >
-                {playing ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 ml-0.5" />}
-              </button>
-              <button onClick={() => setCurrentTime(Math.min(totalDuration, currentTime + 30))} className="w-9 h-9 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-surface-raised transition-colors">
-                <SkipForward className="w-4 h-4" />
-              </button>
-
-              {/* Speed */}
-              <select className="ml-2 px-2 py-1 text-xs bg-surface border border-border rounded-lg text-foreground focus:outline-none cursor-pointer">
-                {['0.25×', '0.5×', '1×', '2×', '4×'].map((s) => (
-                  <option key={s} value={s} className="bg-[#0D1526]" selected={s === '1×'}>{s}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setZoom(Math.max(1, zoom - 0.25))}
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-surface-raised transition-colors border border-border"
-              >
-                <ZoomOut className="w-3.5 h-3.5" />
-              </button>
-              <span className="text-xs font-mono text-muted-foreground w-10 text-center">
-                {zoom.toFixed(2)}×
-              </span>
-              <button
-                onClick={() => setZoom(Math.min(4, zoom + 0.25))}
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-surface-raised transition-colors border border-border"
-              >
-                <ZoomIn className="w-3.5 h-3.5" />
-              </button>
-
-              <div className="w-px h-6 bg-border mx-1" />
-
-              <button className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-surface-raised transition-colors border border-border">
-                <Bookmark className="w-3.5 h-3.5" />
-                Bookmark
-              </button>
-              <button className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-surface-raised transition-colors border border-border">
-                <Tag className="w-3.5 h-3.5" />
-                Annotate
-              </button>
-              <button className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-surface-raised transition-colors border border-border">
-                <Maximize2 className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          </div>
-        </div>
+        )}
       </div>
 
       {/* Right: detections panel */}
@@ -342,7 +441,9 @@ export default function InvestigationPage() {
             <Target className="w-4 h-4 text-accent" />
             <span className="text-sm font-semibold">Detections</span>
           </div>
-          <p className="text-xs text-muted-foreground mt-1">Frame @ {formatVideoTimestamp(currentTime)}</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Frame @ {formatVideoTimestamp(currentTime)}
+          </p>
         </div>
 
         <div className="flex-1 overflow-y-auto no-scrollbar p-3 space-y-2">
@@ -360,7 +461,11 @@ export default function InvestigationPage() {
                 className="flex items-center gap-2.5 p-2 rounded-lg bg-surface border border-border mb-2 hover:border-accent/30 transition-colors cursor-pointer"
               >
                 <div className="w-10 h-10 rounded-lg overflow-hidden bg-surface-raised shrink-0 relative">
-                  <img src={s.thumbnailUrl} alt="" className="w-full h-full object-cover" />
+                  <img
+                    src={s.thumbnailUrl}
+                    alt=""
+                    className="w-full h-full object-cover"
+                  />
                   <div className="absolute inset-0 border-2 border-warning/60 rounded-lg" />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -377,10 +482,14 @@ export default function InvestigationPage() {
               Objects
             </p>
             {[
-              { label: 'Backpack', confidence: 96, color: 'border-success/50' },
-              { label: 'Firearm', confidence: 89, color: 'border-danger/50' },
-              { label: 'Mobile Phone', confidence: 74, color: 'border-accent/50' },
-              { label: 'Train', confidence: 99, color: 'border-muted' },
+              { label: "Backpack", confidence: 96, color: "border-success/50" },
+              { label: "Firearm", confidence: 89, color: "border-danger/50" },
+              {
+                label: "Mobile Phone",
+                confidence: 74,
+                color: "border-accent/50",
+              },
+              { label: "Train", confidence: 99, color: "border-muted" },
             ].map((obj, i) => (
               <motion.div
                 key={obj.label}
@@ -388,12 +497,16 @@ export default function InvestigationPage() {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.2 + i * 0.08 }}
                 className={cn(
-                  'flex items-center justify-between p-2 rounded-lg bg-surface border mb-1.5 hover:border-accent/30 transition-colors cursor-pointer',
-                  obj.color
+                  "flex items-center justify-between p-2 rounded-lg bg-surface border mb-1.5 hover:border-accent/30 transition-colors cursor-pointer",
+                  obj.color,
                 )}
               >
                 <span className="text-xs text-foreground">{obj.label}</span>
-                <ConfidenceBadge score={obj.confidence} size="sm" showLabel={false} />
+                <ConfidenceBadge
+                  score={obj.confidence}
+                  size="sm"
+                  showLabel={false}
+                />
               </motion.div>
             ))}
           </div>
@@ -407,9 +520,16 @@ export default function InvestigationPage() {
               {caseTimeline
                 .filter((t) => t.id === activeTimestamp)
                 .map((event) => (
-                  <div key={event.id} className="p-3 rounded-lg bg-accent/8 border border-accent/25">
-                    <p className="text-xs font-semibold text-foreground mb-1">{event.title}</p>
-                    <p className="text-xs text-muted-foreground leading-relaxed">{event.description}</p>
+                  <div
+                    key={event.id}
+                    className="p-3 rounded-lg bg-accent/8 border border-accent/25"
+                  >
+                    <p className="text-xs font-semibold text-foreground mb-1">
+                      {event.title}
+                    </p>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      {event.description}
+                    </p>
                     <div className="mt-2 flex items-center gap-2">
                       <ConfidenceBadge score={event.confidence} size="sm" />
                       {event.verified && (
@@ -452,19 +572,34 @@ interface VideoPanelProps {
   showOverlays?: boolean;
 }
 
-function VideoPanel({ evidence: ev, isActive, onSelect, playing, currentTime, zoom = 1, showOverlays }: VideoPanelProps) {
+function VideoPanel({
+  evidence: ev,
+  isActive,
+  onSelect,
+  playing,
+  currentTime,
+  zoom = 1,
+  showOverlays,
+}: VideoPanelProps) {
   return (
     <div
       onClick={onSelect}
       className={cn(
-        'relative rounded-xl overflow-hidden bg-black cursor-pointer border-2 transition-all duration-150 group',
-        isActive ? 'border-accent/60' : 'border-border/50 hover:border-border'
+        "relative rounded-xl overflow-hidden bg-black cursor-pointer border-2 transition-all duration-150 group",
+        isActive ? "border-accent/60" : "border-border/50 hover:border-border",
       )}
     >
       {/* Video feed */}
-      <div className="relative w-full h-full overflow-hidden" style={{ transform: `scale(${zoom})`, transformOrigin: 'center' }}>
+      <div
+        className="relative w-full h-full overflow-hidden"
+        style={{ transform: `scale(${zoom})`, transformOrigin: "center" }}
+      >
         {ev.thumbnailUrl ? (
-          <img src={ev.thumbnailUrl} alt="" className="w-full h-full object-cover" />
+          <img
+            src={ev.thumbnailUrl}
+            alt=""
+            className="w-full h-full object-cover"
+          />
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-[#050911]">
             <Film className="w-10 h-10 text-muted-foreground/20" />
@@ -472,30 +607,40 @@ function VideoPanel({ evidence: ev, isActive, onSelect, playing, currentTime, zo
         )}
 
         {/* Scanlines effect */}
-        <div className="absolute inset-0 pointer-events-none" style={{
-          background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.04) 2px, rgba(0,0,0,0.04) 4px)'
-        }} />
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background:
+              "repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.04) 2px, rgba(0,0,0,0.04) 4px)",
+          }}
+        />
 
         {/* Detection overlays (mock bounding boxes) */}
         {showOverlays && isActive && (
           <>
             {/* Suspect Alpha bbox */}
-            <div className="absolute border-2 border-warning/80 rounded"
-              style={{ left: '28%', top: '20%', width: '18%', height: '55%' }}>
+            <div
+              className="absolute border-2 border-warning/80 rounded"
+              style={{ left: "28%", top: "20%", width: "18%", height: "55%" }}
+            >
               <span className="absolute -top-5 left-0 text-2xs bg-warning text-black px-1 rounded font-bold whitespace-nowrap">
                 Suspect α 94%
               </span>
             </div>
             {/* Suspect Beta bbox */}
-            <div className="absolute border-2 border-orange-400/80 rounded"
-              style={{ left: '58%', top: '25%', width: '14%', height: '48%' }}>
+            <div
+              className="absolute border-2 border-orange-400/80 rounded"
+              style={{ left: "58%", top: "25%", width: "14%", height: "48%" }}
+            >
               <span className="absolute -top-5 left-0 text-2xs bg-orange-400 text-black px-1 rounded font-bold whitespace-nowrap">
                 Suspect β 88%
               </span>
             </div>
             {/* Backpack detection */}
-            <div className="absolute border-2 border-success/70 rounded"
-              style={{ left: '30%', top: '58%', width: '10%', height: '18%' }}>
+            <div
+              className="absolute border-2 border-success/70 rounded"
+              style={{ left: "30%", top: "58%", width: "10%", height: "18%" }}
+            >
               <span className="absolute -top-5 left-0 text-2xs bg-success text-white px-1 rounded font-bold">
                 Backpack 96%
               </span>
@@ -506,7 +651,14 @@ function VideoPanel({ evidence: ev, isActive, onSelect, playing, currentTime, zo
 
       {/* Camera label */}
       <div className="absolute top-2 left-2 flex items-center gap-1.5">
-        <div className={cn('w-1.5 h-1.5 rounded-full', playing && isActive ? 'bg-danger animate-pulse' : 'bg-muted-foreground')} />
+        <div
+          className={cn(
+            "w-1.5 h-1.5 rounded-full",
+            playing && isActive
+              ? "bg-danger animate-pulse"
+              : "bg-muted-foreground",
+          )}
+        />
         <span className="text-2xs font-mono text-white/80 bg-black/50 px-1.5 py-0.5 rounded backdrop-blur-sm">
           {ev.metadata?.cameraId || ev.id.toUpperCase()}
         </span>
@@ -519,9 +671,12 @@ function VideoPanel({ evidence: ev, isActive, onSelect, playing, currentTime, zo
 
       {/* Bottom HUD */}
       <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-2">
-        <p className="text-2xs text-white/70 font-mono truncate">{ev.originalName}</p>
+        <p className="text-2xs text-white/70 font-mono truncate">
+          {ev.originalName}
+        </p>
         <p className="text-2xs font-mono text-white/50">
-          {formatVideoTimestamp(currentTime)} / {formatDuration(ev.duration || 1800)}
+          {formatVideoTimestamp(currentTime)} /{" "}
+          {formatDuration(ev.duration || 1800)}
         </p>
       </div>
 
