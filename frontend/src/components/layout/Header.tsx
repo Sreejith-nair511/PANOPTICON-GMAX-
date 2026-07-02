@@ -7,6 +7,7 @@ import { useUIStore } from '@/store/uiStore';
 import { useAuthStore } from '@/store/authStore';
 import { mockAlerts } from '@/lib/mockData';
 import { cn, initials, formatRelativeTime } from '@/lib/utils';
+import { ThemeSwitcher } from '@/components/theme/ThemeSwitcher';
 
 export function Header() {
   const { unreadCount, setGlobalSearchOpen, setAiPanelOpen, aiPanelOpen, markAllRead } = useUIStore();
@@ -44,6 +45,9 @@ export function Header() {
 
       {/* Right */}
       <div className="flex items-center gap-2">
+        {/* Theme Switcher */}
+        <ThemeSwitcher />
+
         {/* AI Toggle */}
         <button onClick={() => setAiPanelOpen(!aiPanelOpen)}
           className={cn('flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border',

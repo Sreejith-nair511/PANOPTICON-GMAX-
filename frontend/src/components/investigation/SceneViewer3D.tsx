@@ -1,10 +1,26 @@
 'use client';
 
 import React, { useRef, Suspense, useMemo, useEffect, useState } from 'react';
-import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Grid, Html, Line } from '@react-three/drei';
 import * as THREE from 'three';
-import { Box as BoxIcon } from 'lucide-react';
+import { Box as BoxIcon, Layers, Eye, Target } from 'lucide-react';
+
+// ── Evidence markers data ─────────────────────────────────────────────────────
+interface EvidenceMarker3D {
+  id: string;
+  label: string;
+  type: 'weapon' | 'object' | 'person' | 'location';
+  position: [number, number, number];
+  confidence: number;
+}
+
+const EVIDENCE_MARKERS: EvidenceMarker3D[] = [
+  { id: 'ev-001', label: 'Firearm', type: 'weapon',   position: [5, 0, 0],    confidence: 89 },
+  { id: 'ev-002', label: 'Backpack', type: 'object',  position: [3, 0, 0.5],  confidence: 92 },
+  { id: 'ev-003', label: 'Phone',   type: 'object',   position: [1, 0, 0.8],  confidence: 74 },
+  { id: 'ev-004', label: 'Victim',  type: 'location', position: [4.5, 0, -1], confidence: 97 },
+];
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface Camera3DData {
@@ -100,23 +116,25 @@ function CameraModel({ cam }: { cam: Camera3DData }) {
 
 // ── Suspect figure ────────────────────────────────────────────────────────────
 function SuspectFigure({ position, color, label }: { position: THREE.Vector3; color: string; label: string }) {
-  const headRef = useRef<THREE.Mesh>(null);
+  const planeRef = useRef<THREE.Mesh>(null);
   useFrame(() => {
-    if (headRef.current) {
-      headRef.current.position.y = 0.9 + Math.sin(Date.now() * 0.003) * 0.12;
+    if (planeRef.current) {
+      planeRef.current.position.y = 0.8 + Math.sin(Date.now() * 0.003) * 0.1;
     }
   });
   return (
     <group position={[position.x, 0, position.z]}>
-      {/* Body */}
-      <mesh castShadow>
-        <cylinderGeometry args={[0.22, 0.22, 1.7, 12]} />
-        <meshStandardMaterial color={color} metalness={0.2} roughness={0.7} emissive={color} emissiveIntensity={0.15} />
-      </mesh>
-      {/* Head */}
-      <mesh ref={headRef} position={[0, 0.9, 0]} castShadow>
-        <sphereGeometry args={[0.27, 16, 16]} />
-        <meshStandardMaterial color={color} metalness={0.2} roughness={0.7} emissive={color} emissiveIntensity={0.15} />
+      {/* Flat rectangular marker plane */}
+      <mesh ref={planeRef} position={[0, 0.8, 0]} castShadow>
+        <planeGeometry args={[0.5, 0.8]} />
+        <meshStandardMaterial 
+          color={color} 
+          metalness={0.3} 
+          roughness={0.6} 
+          emissive={color} 
+          emissiveIntensity={0.2}
+          side={THREE.DoubleSide}
+        />
       </mesh>
       {/* Ground pulse ring */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]}>
@@ -124,7 +142,7 @@ function SuspectFigure({ position, color, label }: { position: THREE.Vector3; co
         <meshBasicMaterial color={color} transparent opacity={0.6} />
       </mesh>
       {/* Label */}
-      <Html position={[0, 2.6, 0]} center distanceFactor={12}>
+      <Html position={[0, 2.0, 0]} center distanceFactor={12}>
         <div style={{
           fontSize: '11px', fontFamily: 'monospace', fontWeight: 'bold',
           whiteSpace: 'nowrap', pointerEvents: 'none',
@@ -171,6 +189,74 @@ function PathTrail({ waypoints, color, progress }: {
       )}
       {/* Moving figure */}
       <SuspectFigure position={position} color={color} label={color === '#f59e0b' ? 'Suspect α' : 'Suspect β'} />
+    </>
+  );
+}
+
+// ── Evidence Marker ───────────────────────────────────────────────────────────
+function EvidenceMarker3D({ marker }: { marker: EvidenceMarker3D }) {
+  const meshRef = useRef<THREE.Mesh>(null);
+  const typeColor: Record<string, string> = {
+    weapon: '#ef4444', object: '#00b4d8', person: '#f59e0b', location: '#22c55e',
+  };
+  const col = typeColor[marker.type];
+
+  useFrame(() => {
+    if (meshRef.current) {
+      meshRef.current.rotation.y += 0.02;
+      meshRef.current.position.y = 0.5 + Math.sin(Date.now() * 0.002 + marker.position[0]) * 0.12;
+    }
+  });
+
+  return (
+    <group position={marker.position}>
+      {/* Diamond shape (octahedron) */}
+      <mesh ref={meshRef} position={[0, 0.5, 0]} castShadow>
+        <octahedronGeometry args={[0.28, 0]} />
+        <meshStandardMaterial color={col} metalness={0.6} roughness={0.3}
+          emissive={col} emissiveIntensity={0.4} />
+      </mesh>
+      {/* Vertical beam */}
+      <mesh position={[0, 0.25, 0]}>
+        <cylinderGeometry args={[0.02, 0.02, 0.5, 6]} />
+        <meshBasicMaterial color={col} transparent opacity={0.5} />
+      </mesh>
+      {/* Ground ring */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]}>
+        <ringGeometry args={[0.22, 0.32, 32]} />
+        <meshBasicMaterial color={col} transparent opacity={0.7} />
+      </mesh>
+      {/* Label */}
+      <Html position={[0, 1.3, 0]} center distanceFactor={14}>
+        <div style={{
+          fontSize: '10px', fontFamily: 'monospace', fontWeight: 'bold', whiteSpace: 'nowrap',
+          background: `${col}22`, color: col, padding: '2px 6px', borderRadius: '4px',
+          border: `1px solid ${col}55`, pointerEvents: 'none',
+        }}>
+          ▲ {marker.label} {marker.confidence}%
+        </div>
+      </Html>
+    </group>
+  );
+}
+
+// ── Trajectory Smoke ──────────────────────────────────────────────────────────
+function TrajectorySmoke({ waypoints, color }: {
+  waypoints: [number, number, number][];
+  color: string;
+}) {
+  const points = useMemo(() => waypoints.map(p => new THREE.Vector3(...p)), [waypoints]);
+  return (
+    <>
+      {/* Dashed ghost trajectory at low level */}
+      <Line points={points} color={color} lineWidth={0.5} opacity={0.15} transparent />
+      {/* Arrow heads at each waypoint */}
+      {waypoints.slice(1).map((wp, i) => (
+        <mesh key={i} position={[wp[0], 0.08, wp[2]]}>
+          <coneGeometry args={[0.12, 0.25, 8]} />
+          <meshBasicMaterial color={color} transparent opacity={0.5} />
+        </mesh>
+      ))}
     </>
   );
 }
@@ -276,7 +362,12 @@ function HeatmapPlane() {
 }
 
 // ── Scene ─────────────────────────────────────────────────────────────────────
-function Scene({ progress }: { progress: number }) {
+function Scene({ progress, showEvidenceMarkers, showTrajectories, showHeatmap }: {
+  progress: number;
+  showEvidenceMarkers: boolean;
+  showTrajectories: boolean;
+  showHeatmap: boolean;
+}) {
   return (
     <>
       <ambientLight intensity={0.25} color="#1a2744" />
@@ -286,10 +377,19 @@ function Scene({ progress }: { progress: number }) {
       <pointLight position={[-5, 4, 0]} intensity={0.6} color="#00b4d8" distance={14} />
       <pointLight position={[9, 3, -4]} intensity={0.5} color="#22c55e" distance={8} />
       <StationFloor />
-      <HeatmapPlane />
+      {showHeatmap && <HeatmapPlane />}
       {CAMERAS.map(cam => <CameraModel key={cam.id} cam={cam} />)}
+      {showTrajectories && (
+        <>
+          <TrajectorySmoke waypoints={ALPHA_PATH} color="#f59e0b" />
+          <TrajectorySmoke waypoints={BETA_PATH} color="#fb923c" />
+        </>
+      )}
       <PathTrail waypoints={ALPHA_PATH} color="#f59e0b" progress={progress} />
       <PathTrail waypoints={BETA_PATH} color="#fb923c" progress={progress} />
+      {showEvidenceMarkers && EVIDENCE_MARKERS.map(m => (
+        <EvidenceMarker3D key={m.id} marker={m} />
+      ))}
       <OrbitControls
         enableDamping dampingFactor={0.06}
         minPolarAngle={0.1} maxPolarAngle={Math.PI / 2.1}
@@ -309,6 +409,7 @@ function SceneLegend() {
         { color: '#fb923c', label: 'Suspect β — Lookout' },
         { color: '#00b4d8', label: 'Camera node' },
         { color: '#ef4444', label: 'High dwell zone' },
+        { color: '#22c55e', label: 'Evidence marker' },
       ].map(item => (
         <div key={item.label} className="flex items-center gap-2 text-2xs font-mono bg-black/65 text-white/70 px-2 py-1 rounded-md backdrop-blur-sm">
           <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: item.color, boxShadow: `0 0 6px ${item.color}` }} />
@@ -324,6 +425,10 @@ interface SceneViewerProps { currentTime: number; className?: string; }
 
 export function SceneViewer3D({ currentTime, className = '' }: SceneViewerProps) {
   const [ready, setReady] = useState(false);
+  const [showHeatmap, setShowHeatmap] = useState(true);
+  const [showEvidenceMarkers, setShowEvidenceMarkers] = useState(true);
+  const [showTrajectories, setShowTrajectories] = useState(true);
+
   useEffect(() => { setReady(true); }, []);
 
   if (!ready) {
@@ -337,17 +442,48 @@ export function SceneViewer3D({ currentTime, className = '' }: SceneViewerProps)
     );
   }
 
+  const toggleBtn = (active: boolean, onClick: () => void, label: string) => (
+    <button onClick={onClick}
+      className="flex items-center gap-1 px-2 py-1 rounded-md text-2xs font-mono transition-all"
+      style={{
+        background: active ? 'rgba(0,180,216,0.15)' : 'rgba(0,0,0,0.5)',
+        border: active ? '1px solid rgba(0,180,216,0.4)' : '1px solid rgba(255,255,255,0.1)',
+        color: active ? '#00b4d8' : 'rgba(255,255,255,0.4)',
+        backdropFilter: 'blur(8px)',
+      }}>
+      {label}
+    </button>
+  );
+
   return (
     <div className={`relative w-full h-full rounded-xl overflow-hidden bg-[#050911] border border-border ${className}`}>
       <SceneLegend />
-      {/* Badge */}
-      <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5 text-2xs font-mono bg-black/65 text-accent px-2.5 py-1 rounded-md border border-accent/25 backdrop-blur-sm pointer-events-none">
-        <BoxIcon className="w-3 h-3" /> 3D RECONSTRUCTION
+
+      {/* Layer toggles */}
+      <div className="absolute top-3 right-3 z-10 flex flex-col items-end gap-1.5">
+        <div className="flex items-center gap-1.5 text-2xs font-mono bg-black/65 text-accent px-2.5 py-1 rounded-md border border-accent/25 backdrop-blur-sm">
+          <BoxIcon className="w-3 h-3" /> 3D RECONSTRUCTION
+        </div>
+        <div className="flex items-center gap-1">
+          {toggleBtn(showHeatmap, () => setShowHeatmap(v => !v), '🌡 Heat')}
+          {toggleBtn(showTrajectories, () => setShowTrajectories(v => !v), '→ Path')}
+          {toggleBtn(showEvidenceMarkers, () => setShowEvidenceMarkers(v => !v), '◆ Evidence')}
+        </div>
       </div>
+
+      {/* Evidence count badge */}
+      {showEvidenceMarkers && (
+        <div className="absolute bottom-8 left-3 z-10 flex items-center gap-1.5 text-2xs font-mono bg-black/65 px-2 py-1 rounded-md backdrop-blur-sm"
+          style={{ color: '#22c55e', border: '1px solid rgba(34,197,94,0.25)' }}>
+          <Target className="w-3 h-3" /> {EVIDENCE_MARKERS.length} evidence markers
+        </div>
+      )}
+
       {/* Controls hint */}
       <div className="absolute bottom-3 right-3 z-10 text-2xs text-white/30 font-mono pointer-events-none">
         Drag · Scroll · Right-click
       </div>
+
       <Canvas
         shadows
         camera={{ position: [0, 16, 22], fov: 42, near: 0.1, far: 200 }}
@@ -356,7 +492,12 @@ export function SceneViewer3D({ currentTime, className = '' }: SceneViewerProps)
         onCreated={({ gl }) => { gl.setClearColor('#050911'); }}
       >
         <Suspense fallback={null}>
-          <Scene progress={currentTime} />
+          <Scene
+            progress={currentTime}
+            showEvidenceMarkers={showEvidenceMarkers}
+            showTrajectories={showTrajectories}
+            showHeatmap={showHeatmap}
+          />
         </Suspense>
       </Canvas>
     </div>

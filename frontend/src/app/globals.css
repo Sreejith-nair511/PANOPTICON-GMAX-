@@ -6,11 +6,12 @@
 @tailwind utilities;
 
 /* ═══════════════════════════════════════════════════════════
-   PANOPTICON Design System — Dark Intelligence Theme
+   PANOPTICON Design System — Multi-Theme Intelligence Platform
    ═══════════════════════════════════════════════════════════ */
 
-/* ── CSS Variables ────────────────────────────────────────── */
-:root {
+/* ── DARK THEME (Default) ─────────────────────────────────── */
+:root,
+[data-theme="dark"] {
   --bg-base:        #03050d;
   --bg-surface:     #070b16;
   --bg-elevated:    #0c1220;
@@ -40,7 +41,6 @@
   --radius-lg: 16px;
   --radius-xl: 20px;
 
-  /* Tailwind CSS variable shims */
   --background: 221 47% 4%;
   --foreground: 215 25% 92%;
   --surface: 221 44% 7%;
@@ -73,6 +73,204 @@
   --border-css: 221 30% 13%;
   --input: 221 36% 10%;
   --ring: 194 100% 42%;
+  --radius: 0.5rem;
+}
+
+/* ── LIGHT THEME ──────────────────────────────────────────── */
+[data-theme="light"] {
+  --bg-base:        #f9fafb;
+  --bg-surface:     #ffffff;
+  --bg-elevated:    #f3f4f6;
+  --bg-overlay:     #e5e7eb;
+
+  --accent:         #0891b2;
+  --accent-dim:     rgba(8,145,178,0.08);
+  --accent-glow:    rgba(8,145,178,0.2);
+  --accent-bright:  #06b6d4;
+
+  --primary:        #2563eb;
+  --primary-dim:    rgba(37,99,235,0.1);
+
+  --text-primary:   #111827;
+  --text-secondary: #6b7280;
+  --text-dim:       #9ca3af;
+
+  --border:         rgba(0,0,0,0.06);
+  --border-bright:  rgba(0,0,0,0.1);
+
+  --success:        #16a34a;
+  --warning:        #d97706;
+  --danger:         #dc2626;
+
+  --radius-sm:  8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+
+  --background: 0 0% 97%;
+  --foreground: 0 0% 7%;
+  --surface: 0 0% 100%;
+  --surface-raised: 0 0% 96%;
+  --surface-overlay: 0 0% 91%;
+  --card: 0 0% 100%;
+  --card-foreground: 0 0% 7%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 0 0% 7%;
+  --primary-css: 221 83% 53%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 0 0% 91%;
+  --secondary-foreground: 0 0% 15%;
+  --muted: 0 0% 91%;
+  --muted-foreground: 0 0% 45%;
+  --accent-css: 188 100% 38%;
+  --accent-foreground: 0 0% 100%;
+  --accent-glow-css: 188 100% 48%;
+  --success-css: 132 61% 40%;
+  --success-foreground: 0 0% 100%;
+  --success-dim: 132 61% 40%;
+  --warning-css: 38 92% 50%;
+  --warning-foreground: 0 0% 100%;
+  --warning-dim: 38 92% 50%;
+  --danger-css: 0 84% 60%;
+  --danger-foreground: 0 0% 100%;
+  --danger-dim: 0 84% 60%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+  --border-css: 0 0% 89%;
+  --input: 0 0% 95%;
+  --ring: 188 100% 38%;
+  --radius: 0.5rem;
+}
+
+/* ── SERIOUS/RED THEME (Critical Cases) ────────────────────── */
+[data-theme="serious"] {
+  --bg-base:        #0f0203;
+  --bg-surface:     #1a0506;
+  --bg-elevated:    #2a0809;
+  --bg-overlay:     #3a0c0f;
+
+  --accent:         #dc2626;
+  --accent-dim:     rgba(220,38,38,0.12);
+  --accent-glow:    rgba(220,38,38,0.35);
+  --accent-bright:  #f87171;
+
+  --primary:        #991b1b;
+  --primary-dim:    rgba(153,27,27,0.15);
+
+  --text-primary:   #fecaca;
+  --text-secondary: #fca5a5;
+  --text-dim:       #f87171;
+
+  --border:         rgba(220,38,38,0.15);
+  --border-bright:  rgba(220,38,38,0.25);
+
+  --success:        #dc2626;
+  --warning:        #f97316;
+  --danger:         #b91c1c;
+
+  --radius-sm:  8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+
+  --background: 0 100% 3%;
+  --foreground: 0 71% 92%;
+  --surface: 0 71% 10%;
+  --surface-raised: 0 71% 15%;
+  --surface-overlay: 0 71% 20%;
+  --card: 0 71% 10%;
+  --card-foreground: 0 71% 92%;
+  --popover: 0 71% 10%;
+  --popover-foreground: 0 71% 92%;
+  --primary-css: 0 100% 30%;
+  --primary-foreground: 0 71% 92%;
+  --secondary: 0 71% 20%;
+  --secondary-foreground: 0 71% 92%;
+  --muted: 0 71% 15%;
+  --muted-foreground: 0 71% 65%;
+  --accent-css: 0 85% 51%;
+  --accent-foreground: 0 71% 92%;
+  --accent-glow-css: 0 85% 61%;
+  --success-css: 0 100% 40%;
+  --success-foreground: 0 71% 92%;
+  --success-dim: 0 100% 40%;
+  --warning-css: 38 92% 50%;
+  --warning-foreground: 0 71% 92%;
+  --warning-dim: 38 92% 50%;
+  --danger-css: 0 100% 35%;
+  --danger-foreground: 0 71% 92%;
+  --danger-dim: 0 100% 35%;
+  --destructive: 0 100% 35%;
+  --destructive-foreground: 0 71% 92%;
+  --border-css: 0 85% 25%;
+  --input: 0 71% 12%;
+  --ring: 0 85% 51%;
+  --radius: 0.5rem;
+}
+
+/* ── HIGH CONTRAST THEME ──────────────────────────────────── */
+[data-theme="high-contrast"] {
+  --bg-base:        #000000;
+  --bg-surface:     #0a0a0a;
+  --bg-elevated:    #1a1a1a;
+  --bg-overlay:     #2a2a2a;
+
+  --accent:         #00ff00;
+  --accent-dim:     rgba(0,255,0,0.1);
+  --accent-glow:    rgba(0,255,0,0.3);
+  --accent-bright:  #00ff00;
+
+  --primary:        #ffff00;
+  --primary-dim:    rgba(255,255,0,0.1);
+
+  --text-primary:   #ffffff;
+  --text-secondary: #cccccc;
+  --text-dim:       #999999;
+
+  --border:         rgba(255,255,255,0.3);
+  --border-bright:  rgba(255,255,255,0.5);
+
+  --success:        #00ff00;
+  --warning:        #ffff00;
+  --danger:         #ff0000;
+
+  --radius-sm:  8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+
+  --background: 0 0% 0%;
+  --foreground: 0 0% 100%;
+  --surface: 0 0% 6%;
+  --surface-raised: 0 0% 10%;
+  --surface-overlay: 0 0% 16%;
+  --card: 0 0% 6%;
+  --card-foreground: 0 0% 100%;
+  --popover: 0 0% 6%;
+  --popover-foreground: 0 0% 100%;
+  --primary-css: 60 100% 50%;
+  --primary-foreground: 0 0% 0%;
+  --secondary: 0 0% 16%;
+  --secondary-foreground: 0 0% 100%;
+  --muted: 0 0% 10%;
+  --muted-foreground: 0 0% 80%;
+  --accent-css: 120 100% 50%;
+  --accent-foreground: 0 0% 0%;
+  --accent-glow-css: 120 100% 50%;
+  --success-css: 120 100% 50%;
+  --success-foreground: 0 0% 0%;
+  --success-dim: 120 100% 50%;
+  --warning-css: 60 100% 50%;
+  --warning-foreground: 0 0% 0%;
+  --warning-dim: 60 100% 50%;
+  --danger-css: 0 100% 50%;
+  --danger-foreground: 0 0% 0%;
+  --danger-dim: 0 100% 50%;
+  --destructive: 0 100% 50%;
+  --destructive-foreground: 0 0% 0%;
+  --border-css: 0 0% 30%;
+  --input: 0 0% 8%;
+  --ring: 120 100% 50%;
   --radius: 0.5rem;
 }
 
@@ -119,16 +317,16 @@ body {
 
 /* ── Glass panels ─────────────────────────────────────────── */
 .glass {
-  background: rgba(7,11,22,0.8);
+  background: rgba(var(--background) / 0.8);
   backdrop-filter: blur(20px) saturate(1.2);
   -webkit-backdrop-filter: blur(20px) saturate(1.2);
   border: 1px solid var(--border);
 }
 .glass-strong {
-  background: rgba(3,5,13,0.92);
+  background: rgba(var(--background) / 0.92);
   backdrop-filter: blur(32px) saturate(1.5);
   -webkit-backdrop-filter: blur(32px) saturate(1.5);
-  border: 1px solid rgba(255,255,255,0.08);
+  border: 1px solid var(--border-bright);
 }
 
 /* ── Card panel ───────────────────────────────────────────── */
@@ -283,8 +481,44 @@ body {
 }
 .input-dark::placeholder { color: var(--text-dim); }
 .input-dark:focus {
-  border-color: rgba(0,180,216,0.5);
-  box-shadow: 0 0 0 3px rgba(0,180,216,0.1);
+  border-color: rgba(var(--accent-css) / 0.5);
+  box-shadow: 0 0 0 3px rgba(var(--accent-css) / 0.1);
+}
+
+/* ── Radix Dropdown Menu fixes ────────────────────────────── */
+[role="menuitem"] {
+  cursor: pointer;
+}
+
+/* ── Tabs styling ─────────────────────────────────────────── */
+[role="tablist"] {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  gap: 1rem;
+}
+
+[role="tab"] {
+  padding: 0.75rem 1rem;
+  border-bottom: 2px solid transparent;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+[role="tab"]:hover {
+  color: var(--text-primary);
+}
+
+[role="tab"][data-state="active"] {
+  border-bottom-color: var(--accent);
+  color: var(--accent);
+}
+
+[role="tabpanel"] {
+  display: flex;
+  flex-direction: column;
 }
 
 /* ══════════════════════════════════════════════════════════

@@ -2,16 +2,29 @@
 
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import dynamic from 'next/dynamic';
 import {
   FileText, Plus, Download, Printer, Share2, BrainCircuit,
   Clock, Users, Film, Shield, Search, Sparkles, CheckCircle,
-  AlertCircle, ChevronRight, X, Lock,
+  AlertCircle, ChevronRight, X, Lock, Layers,
 } from 'lucide-react';
 import { mockReport, mockCases } from '@/lib/mockData';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { ConfidenceBadge } from '@/components/ui/ConfidenceBadge';
 import { cn, formatTimestamp, formatRelativeTime } from '@/lib/utils';
 import { toast } from 'sonner';
+
+const ForensicReportGenerator = dynamic(
+  () => import('@/components/reports/ForensicReportGenerator').then(m => ({ default: m.ForensicReportGenerator })),
+  { ssr: false, loading: () => (
+    <div className="flex-1 flex items-center justify-center">
+      <div className="flex flex-col items-center gap-3">
+        <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+        <p className="text-xs text-muted-foreground font-mono">Loading Report Generator…</p>
+      </div>
+    </div>
+  )}
+);
 
 const REPORTS = [
   { id:'rpt-jack', caseId:'case-jack', caseNumber:'PAN-1888-0001', type:'comprehensive', title:'AI Forensic Report – Jack the Ripper', status:'reviewed', generatedAt:'2026-06-30T10:00:00Z', generatedBy:'AI (Gemini Pro)', reviewedBy:'Det. Sarah Kim', pages:38, version:3 },
@@ -64,6 +77,7 @@ export default function ReportsPage() {
   const [showGen,  setShowGen]    = useState(false);
   const [genPct,   setGenPct]     = useState(0);
   const [genRunning, setGenRunning] = useState(false);
+  const [activeTab, setActiveTab] = useState<'reports' | 'generator'>('reports');
 
   const filtered = REPORTS.filter(r =>
     !search || r.title.toLowerCase().includes(search.toLowerCase()) || r.caseNumber.toLowerCase().includes(search.toLowerCase())
@@ -88,18 +102,37 @@ export default function ReportsPage() {
         <div className="p-4" style={{ borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
           <div className="flex items-center justify-between mb-3">
             <h1 className="text-sm font-bold">Reports</h1>
-            <button onClick={() => setShowGen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:scale-105"
-              style={{ background:'linear-gradient(135deg,#00b4d8,#1565c0)', color:'white' }}>
-              <Plus className="w-3.5 h-3.5" /> Generate
-            </button>
+            <div className="flex items-center gap-1.5">
+              <button onClick={() => setActiveTab('generator')}
+                className={cn('flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all border',
+                  activeTab === 'generator' ? 'bg-accent/15 text-accent border-accent/30' : 'border-border text-muted-foreground hover:text-foreground')}>
+                <Layers className="w-3.5 h-3.5" /> AI Gen
+              </button>
+              <button onClick={() => setShowGen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:scale-105"
+                style={{ background:'linear-gradient(135deg,#00b4d8,#1565c0)', color:'white' }}>
+                <Plus className="w-3.5 h-3.5" /> New
+              </button>
+            </div>
           </div>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/50 pointer-events-none" />
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search reports…"
-              className="w-full pl-9 pr-3 py-2 text-xs rounded-xl text-foreground placeholder:text-muted-foreground/40 focus:outline-none"
-              style={{ background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.07)' }} />
+          {/* Tab bar */}
+          <div className="flex rounded-lg overflow-hidden border border-border mb-3">
+            {(['reports', 'generator'] as const).map(t => (
+              <button key={t} onClick={() => setActiveTab(t)}
+                className={cn('flex-1 py-1.5 text-2xs font-semibold capitalize transition-colors',
+                  activeTab === t ? 'bg-accent/15 text-accent' : 'text-muted-foreground hover:text-foreground')}>
+                {t === 'generator' ? '⚡ AI Generator' : '📄 Library'}
+              </button>
+            ))}
           </div>
+          {activeTab === 'reports' && (
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/50 pointer-events-none" />
+              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search reports…"
+                className="w-full pl-9 pr-3 py-2 text-xs rounded-xl text-foreground placeholder:text-muted-foreground/40 focus:outline-none"
+                style={{ background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.07)' }} />
+            </div>
+          )}
         </div>
 
         {/* Generating bar */}
@@ -122,7 +155,7 @@ export default function ReportsPage() {
 
         {/* Report list */}
         <div className="flex-1 overflow-y-auto no-scrollbar">
-          {filtered.map(r => {
+          {activeTab === 'reports' && filtered.map(r => {
             const cfg = TYPE_CFG[r.type] || TYPE_CFG.comprehensive;
             const Icon = cfg.icon;
             const isSelected = selected?.id === r.id;
@@ -144,11 +177,36 @@ export default function ReportsPage() {
               </button>
             );
           })}
+          {activeTab === 'generator' && (
+            <div className="p-4 space-y-2">
+              <p className="text-xs text-muted-foreground">Configure and generate dataset-backed forensic reports with AI analysis.</p>
+              <div className="space-y-1.5">
+                {[
+                  { label: 'MOT17 Tracking', desc: 'Pedestrian movement validation' },
+                  { label: 'Market-1501 ReID', desc: 'Cross-camera identity matching' },
+                  { label: 'COCO Detection', desc: 'Weapon & object analysis' },
+                ].map(item => (
+                  <div key={item.label} className="flex items-center gap-2 p-2.5 rounded-lg border border-border"
+                    style={{ background: 'rgba(0,180,216,0.04)' }}>
+                    <div className="w-1.5 h-1.5 rounded-full bg-accent shrink-0" />
+                    <div>
+                      <p className="text-2xs font-semibold text-accent">{item.label}</p>
+                      <p className="text-2xs text-muted-foreground">{item.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Report viewer */}
-      {selected ? (
+      {/* Right panel: Generator OR Report viewer */}
+      {activeTab === 'generator' ? (
+        <div className="flex-1 overflow-hidden">
+          <ForensicReportGenerator />
+        </div>
+      ) : selected ? (
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Toolbar */}
           <div className="flex items-center justify-between px-6 py-4 shrink-0"
@@ -347,9 +405,7 @@ export default function ReportsPage() {
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center"><FileText className="w-12 h-12 text-muted-foreground/20 mx-auto mb-3" /><p className="text-sm text-muted-foreground">Select a report</p></div>
         </div>
-      )}
-
-      {/* Generate modal */}
+      )}      {/* Generate modal */}
       <AnimatePresence>
         {showGen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background:'rgba(0,0,0,0.75)', backdropFilter:'blur(8px)' }}>

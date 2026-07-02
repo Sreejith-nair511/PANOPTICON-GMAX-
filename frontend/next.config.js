@@ -2,7 +2,15 @@
 const nextConfig = {
   reactStrictMode: true,
   images: {
-    domains: ['localhost', 's3.amazonaws.com', 'picsum.photos'],
+    remotePatterns: [
+      { protocol: 'http', hostname: 'localhost' },
+      { protocol: 'https', hostname: 's3.amazonaws.com' },
+      { protocol: 'https', hostname: 'picsum.photos' },
+      { protocol: 'https', hostname: '*.pexels.com' },
+      { protocol: 'https', hostname: 'images.pexels.com' },
+      { protocol: 'https', hostname: 'pixabay.com' },
+      { protocol: 'https', hostname: '*.pixabay.com' },
+    ],
     formats: ['image/avif', 'image/webp'],
   },
   transpilePackages: ['@xyflow/react', '@xyflow/system'],

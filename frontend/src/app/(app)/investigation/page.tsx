@@ -7,7 +7,7 @@ import {
   Play, Pause, SkipBack, SkipForward, ZoomIn, ZoomOut,
   Maximize2, Layers, Tag, Bookmark, FileText, Clock,
   Users, Film, BrainCircuit, CheckCircle, Target,
-  Box, Network, Video, ChevronDown, AlertTriangle,
+  Box, Network, Video, ChevronDown, AlertTriangle, GitMerge,
 } from 'lucide-react';
 import { VideoPlayer, VideoPlayerHandle } from '@/components/investigation/VideoPlayer';
 import { mockEvidence, mockTimeline, mockSuspects, mockCases } from '@/lib/mockData';
@@ -25,6 +25,10 @@ const RelationshipGraph = dynamic(
   () => import('@/components/investigation/RelationshipGraph').then(m => ({ default: m.RelationshipGraph })),
   { ssr: false, loading: () => <PaneLoader label="Loading Graph…" /> }
 );
+const EvidenceCorrelationEngine = dynamic(
+  () => import('@/components/investigation/EvidenceCorrelationEngine').then(m => ({ default: m.EvidenceCorrelationEngine })),
+  { ssr: false, loading: () => <PaneLoader label="Loading Correlation Engine…" /> }
+);
 
 function PaneLoader({ label }: { label: string }) {
   return (
@@ -38,7 +42,7 @@ function PaneLoader({ label }: { label: string }) {
 }
 
 type PanelMode = 'single' | 'split' | 'quad';
-type ViewMode  = 'video' | '3d' | 'graph';
+type ViewMode  = 'video' | '3d' | 'graph' | 'correlations';
 const SPEEDS = [0.25, 0.5, 1, 2, 4];
 const TOTAL  = 1800; // 30 min in seconds
 
@@ -208,7 +212,7 @@ export default function InvestigationPage() {
         <div className="flex items-center gap-3 px-4 py-2 border-b border-border bg-[#060b17] shrink-0 flex-wrap">
           {/* View tabs */}
           <div className="flex items-center bg-surface border border-border rounded-lg overflow-hidden">
-            {([['video', Video, 'Video'], ['3d', Box, '3D Scene'], ['graph', Network, 'Graph']] as const).map(([mode, Icon, lbl]) => (
+            {([['video', Video, 'Video'], ['3d', Box, '3D Scene'], ['graph', Network, 'Graph'], ['correlations', GitMerge, 'Correlations']] as const).map(([mode, Icon, lbl]) => (
               <button key={mode} onClick={() => setViewMode(mode as ViewMode)}
                 className={cn('flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors border-r border-border last:border-r-0',
                   viewMode === mode ? 'bg-accent/15 text-accent' : 'text-muted-foreground hover:text-foreground')}>
@@ -250,6 +254,11 @@ export default function InvestigationPage() {
           {viewMode === 'graph' && (
             <div className="w-full h-full rounded-xl overflow-hidden border border-border">
               <RelationshipGraph />
+            </div>
+          )}
+          {viewMode === 'correlations' && (
+            <div className="w-full h-full rounded-xl overflow-hidden border border-border">
+              <EvidenceCorrelationEngine />
             </div>
           )}
           {viewMode === 'video' && (
