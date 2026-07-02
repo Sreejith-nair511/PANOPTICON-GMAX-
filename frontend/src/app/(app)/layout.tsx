@@ -7,21 +7,28 @@ import { AppShell } from '@/components/layout/AppShell';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, token } = useAuthStore();
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      router.replace('/auth/login');
+    // Check authentication from localStorage directly
+    const stored = localStorage.getItem('panopticon-auth');
+    let isAuth = false;
+    
+    if (stored) {
+      try {
+        const { state } = JSON.parse(stored);
+        isAuth = state?.isAuthenticated && state?.token;
+      } catch {
+        // Invalid storage
+      }
     }
-  }, [isAuthenticated, router]);
 
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
+    // Redirect if not authenticated
+    if (!isAuth) {
+      window.location.replace('/auth/login');
+    }
+  }, []);
 
+  // Render immediately - don't wait for hydration
   return <AppShell>{children}</AppShell>;
 }

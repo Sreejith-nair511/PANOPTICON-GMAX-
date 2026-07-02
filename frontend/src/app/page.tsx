@@ -1,27 +1,25 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuthStore } from '@/store/authStore';
 
 export default function RootPage() {
-  const router = useRouter();
-  const { isAuthenticated } = useAuthStore();
-
   useEffect(() => {
-    if (isAuthenticated) {
-      router.replace('/dashboard');
-    } else {
-      router.replace('/auth/login');
+    // Get auth state directly from localStorage to avoid hydration wait
+    const stored = localStorage.getItem('panopticon-auth');
+    let isAuthenticated = false;
+    
+    if (stored) {
+      try {
+        const { state } = JSON.parse(stored);
+        isAuthenticated = state?.isAuthenticated && state?.token;
+      } catch {
+        // Invalid storage, treat as not authenticated
+      }
     }
-  }, [isAuthenticated, router]);
 
-  return (
-    <div className="min-h-screen bg-background flex items-center justify-center">
-      <div className="flex flex-col items-center gap-3">
-        <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
-        <p className="text-xs text-muted-foreground">Initializing PANOPTICON...</p>
-      </div>
-    </div>
-  );
+    // Immediate redirect - no delays
+    window.location.replace(isAuthenticated ? '/dashboard' : '/auth/login');
+  }, []);
+
+  return null;
 }
