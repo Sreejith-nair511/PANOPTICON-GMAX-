@@ -5,16 +5,16 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import {
   Shield, Film, Users, FileText, BrainCircuit, AlertTriangle,
-  TrendingUp, Target, Clock, MapPin, ChevronRight, Zap,
-  Activity, Eye, Lock, Radio,
+  TrendingUp, Target, Clock, MapPin, ChevronRight, Zap, Activity,
+  Eye, Lock, Radio, ArrowUpRight, Cpu, Database, Wifi,
 } from 'lucide-react';
 import { mockCases, mockDashboardStats, mockAlerts, mockSuspects } from '@/lib/mockData';
-import { cn, formatRelativeTime, getPriorityColor } from '@/lib/utils';
 import { ConfidenceBadge } from '@/components/ui/ConfidenceBadge';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { DetectionChart, CaseActivityChart } from '@/components/dashboard/DetectionChart';
+import { cn, formatRelativeTime } from '@/lib/utils';
 
-// ── Live clock ───────────────────────────────────────────────────────────────
+// ── Live Clock (SSR-safe) ─────────────────────────────────────────────────────
 function LiveClock() {
   const [time, setTime] = useState<Date | null>(null);
   useEffect(() => {
@@ -23,262 +23,320 @@ function LiveClock() {
     return () => clearInterval(t);
   }, []);
 
-  if (!time) return (
-    <div className="text-right">
-      <p className="text-2xl font-bold font-mono tabular-nums text-gradient-cyan">--:--:--</p>
-      <p className="text-xs text-muted-foreground font-mono">Loading...</p>
-    </div>
-  );
-
   return (
     <div className="text-right" suppressHydrationWarning>
-      <p className="text-2xl font-bold font-mono tabular-nums text-gradient-cyan" suppressHydrationWarning>
-        {time.toLocaleTimeString('en-US', { hour12: false })}
+      <p className="text-3xl font-bold font-mono tabular-nums text-gradient-cyan" suppressHydrationWarning>
+        {time ? time.toLocaleTimeString('en-US', { hour12: false }) : '--:--:--'}
       </p>
-      <p className="text-xs text-muted-foreground font-mono" suppressHydrationWarning>
-        {time.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+      <p className="text-xs mt-0.5" style={{ color:'var(--text-secondary)' }} suppressHydrationWarning>
+        {time ? time.toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' }) : ''}
       </p>
     </div>
   );
 }
 
-// ── Priority strip ────────────────────────────────────────────────────────────
-const priorityBorder: Record<string, string> = {
-  critical: 'border-l-danger',
-  high: 'border-l-warning',
-  medium: 'border-l-accent',
-  low: 'border-l-muted-foreground/40',
-};
-
-// ── Case card ─────────────────────────────────────────────────────────────────
-function CaseCard({ c, index }: { c: typeof mockCases[0]; index: number }) {
-  const isHistorical = ['case-jack','case-cooper','case-zodiac','case-tupac'].includes(c.id);
+// ── Stat card ─────────────────────────────────────────────────────────────────
+function StatCard({ label, value, sub, icon: Icon, color, trend }: {
+  label: string; value: string|number; sub?: string;
+  icon: React.ElementType; color: string; trend?: string;
+}) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.06 }}
-      whileHover={{ y: -3, transition: { duration: 0.15 } }}
-    >
-      <Link href={`/cases/${c.id}`}
-        className={cn('block card-panel rounded-xl p-4 border-l-2 group relative overflow-hidden', priorityBorder[c.priority])}>
-        {/* Historical badge */}
-        {isHistorical && (
-          <div className="absolute top-3 right-3 flex items-center gap-1 text-2xs px-1.5 py-0.5 rounded-full bg-amber-900/30 border border-amber-700/40 text-amber-400/80">
-            <Lock className="w-2.5 h-2.5" /> COLD CASE
-          </div>
-        )}
-        <div className="flex items-start gap-3">
-          <div className={cn('w-9 h-9 rounded-lg flex items-center justify-center shrink-0 mt-0.5',
-            c.priority === 'critical' ? 'bg-danger/10' : c.priority === 'high' ? 'bg-warning/10' : 'bg-accent/10')}>
-            <Shield className={cn('w-4 h-4', c.priority === 'critical' ? 'text-danger' : c.priority === 'high' ? 'text-warning' : 'text-accent')} />
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1 flex-wrap">
-              <span className="text-2xs font-mono text-muted-foreground/50">{c.caseNumber}</span>
-              <StatusBadge status={c.status} />
-            </div>
-            <h3 className="text-sm font-semibold text-foreground group-hover:text-accent transition-colors line-clamp-1">{c.title}</h3>
-            <p className="text-xs text-muted-foreground mt-1 line-clamp-2 leading-relaxed">{c.description}</p>
-            <div className="flex items-center gap-3 mt-2.5 flex-wrap">
-              <span className="flex items-center gap-1 text-2xs text-muted-foreground">
-                <MapPin className="w-3 h-3" />{c.location.split(',')[0]}
-              </span>
-              <span className="flex items-center gap-1 text-2xs text-muted-foreground">
-                <Film className="w-3 h-3" />{c.evidenceCount}
-              </span>
-              <span className="flex items-center gap-1 text-2xs text-muted-foreground">
-                <Users className="w-3 h-3" />{c.suspects}
-              </span>
-              {c.aiProcessed && <ConfidenceBadge score={c.confidenceScore} size="sm" showLabel={false} />}
-            </div>
-          </div>
+    <motion.div whileHover={{ y:-3, transition:{ duration:0.15 } }} className="metric-card group">
+      <div style={{ position:'absolute', top:0, left:0, right:0, height:'1px', background:`linear-gradient(90deg, transparent, ${color}66, transparent)`, opacity:0, transition:'opacity 0.2s' }} className="group-hover:opacity-100" />
+      <div className="flex items-start justify-between mb-4">
+        <span className="text-2xs font-bold uppercase tracking-widest" style={{ color:'var(--text-dim)' }}>{label}</span>
+        <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background:`${color}15`, border:`1px solid ${color}25` }}>
+          <Icon className="w-4 h-4" style={{ color }} />
         </div>
+      </div>
+      <div className="text-3xl font-bold tabular-nums tracking-tight mb-1">{value}</div>
+      {(sub || trend) && (
+        <div className="flex items-center gap-2">
+          {trend && <span className="flex items-center gap-1 text-2xs font-semibold" style={{ color:'#4ade80' }}><TrendingUp className="w-3 h-3" />{trend}</span>}
+          {sub && <span className="text-2xs" style={{ color:'var(--text-dim)' }}>{sub}</span>}
+        </div>
+      )}
+    </motion.div>
+  );
+}
+
+// ── Case row ──────────────────────────────────────────────────────────────────
+const P_COLOR: Record<string,string> = { critical:'#ef4444', high:'#f59e0b', medium:'#00b4d8', low:'#64748b' };
+
+function CaseRow({ c, i }: { c: typeof mockCases[0]; i: number }) {
+  const isHistorical = ['case-jack','case-cooper','case-zodiac','case-tupac'].includes(c.id);
+  const col = P_COLOR[c.priority];
+  return (
+    <motion.div initial={{ opacity:0, x:-8 }} animate={{ opacity:1, x:0 }} transition={{ delay:i*0.05 }}>
+      <Link href={`/cases/${c.id}`}
+        className="flex items-center gap-4 px-5 py-3.5 transition-colors group"
+        style={{ borderBottom:'1px solid var(--border)' }}>
+        <div className="w-1 h-10 rounded-full shrink-0" style={{ background:col, boxShadow:`0 0 10px ${col}50` }} />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-0.5">
+            <span className="text-2xs font-mono" style={{ color:'var(--text-dim)' }}>{c.caseNumber}</span>
+            <StatusBadge status={c.status} />
+            {isHistorical && (
+              <span className="text-2xs font-bold flex items-center gap-1 px-1.5 py-0.5 rounded" style={{ background:'rgba(180,130,60,0.12)', border:'1px solid rgba(180,130,60,0.25)', color:'rgba(200,160,80,0.9)' }}>
+                <Lock className="w-2.5 h-2.5" />COLD
+              </span>
+            )}
+          </div>
+          <p className="text-sm font-semibold group-hover:text-[#38e1ff] transition-colors line-clamp-1">{c.title}</p>
+          <p className="text-xs line-clamp-1 flex items-center gap-1 mt-0.5" style={{ color:'var(--text-dim)' }}>
+            <MapPin className="w-3 h-3 shrink-0" />{c.location}
+          </p>
+        </div>
+        <div className="hidden md:flex items-center gap-5 shrink-0">
+          <div className="text-center">
+            <p className="text-sm font-bold tabular-nums">{c.evidenceCount}</p>
+            <p className="text-2xs" style={{ color:'var(--text-dim)' }}>evidence</p>
+          </div>
+          <div className="text-center">
+            <p className="text-sm font-bold tabular-nums">{c.suspects}</p>
+            <p className="text-2xs" style={{ color:'var(--text-dim)' }}>suspects</p>
+          </div>
+          {c.aiProcessed && <ConfidenceBadge score={c.confidenceScore} size="sm" showLabel={false} />}
+        </div>
+        <ChevronRight className="w-4 h-4 shrink-0 opacity-30 group-hover:opacity-100 group-hover:text-[#00b4d8] transition-all" />
       </Link>
     </motion.div>
-  );
-}
-
-// ── Stat tile ─────────────────────────────────────────────────────────────────
-function StatTile({ icon: Icon, label, value, color, sub }: { icon: React.ElementType; label: string; value: string | number; color: string; sub?: string }) {
-  return (
-    <motion.div whileHover={{ y: -2 }} className="metric-card rounded-xl">
-      <div className="flex items-start justify-between mb-3">
-        <span className="text-2xs text-muted-foreground font-medium uppercase tracking-wider">{label}</span>
-        <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center', `${color}/10`)}>
-          <Icon className={cn('w-4 h-4', color)} />
-        </div>
-      </div>
-      <p className="text-3xl font-bold tabular-nums tracking-tight">{value}</p>
-      {sub && <p className="text-2xs text-muted-foreground mt-1">{sub}</p>}
-    </motion.div>
-  );
-}
-
-// ── Live alerts feed ──────────────────────────────────────────────────────────
-function AlertsFeed() {
-  const unread = mockAlerts.filter(a => !a.read);
-  return (
-    <div className="card-panel rounded-xl overflow-hidden">
-      <div className="flex items-center gap-2 p-4 border-b border-border">
-        <div className="w-2 h-2 rounded-full bg-danger animate-pulse" />
-        <Radio className="w-4 h-4 text-danger" />
-        <span className="text-sm font-semibold">Live Alerts</span>
-        {unread.length > 0 && <span className="badge-critical text-2xs ml-1">{unread.length}</span>}
-      </div>
-      <div className="divide-y divide-border/40">
-        {mockAlerts.map((alert, i) => (
-          <motion.div key={alert.id} initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.08 }}
-            className={cn('flex gap-3 p-4 hover:bg-surface-raised/40 transition-colors cursor-pointer', !alert.read && 'bg-accent/4')}>
-            <div className={cn('w-1.5 h-1.5 rounded-full mt-1.5 shrink-0',
-              alert.severity === 'critical' ? 'bg-danger' : alert.severity === 'warning' ? 'bg-warning' : 'bg-accent')} />
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold">{alert.title}</p>
-              <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2 leading-relaxed">{alert.message}</p>
-              <p className="text-2xs text-muted-foreground/50 mt-1">{formatRelativeTime(alert.createdAt)}</p>
-            </div>
-          </motion.div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ── Suspects carousel ─────────────────────────────────────────────────────────
-function SuspectsPanel() {
-  return (
-    <div className="card-panel rounded-xl overflow-hidden">
-      <div className="flex items-center gap-2 p-4 border-b border-border">
-        <Target className="w-4 h-4 text-warning" />
-        <span className="text-sm font-semibold">Tracked Suspects</span>
-        <Link href="/tracking" className="ml-auto text-xs text-accent hover:text-accent-glow flex items-center gap-1">
-          View all <ChevronRight className="w-3 h-3" />
-        </Link>
-      </div>
-      <div className="p-3 grid grid-cols-2 gap-2">
-        {mockSuspects.slice(0, 4).map((s, i) => (
-          <motion.div key={s.id} initial={{ opacity: 0, scale: 0.94 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.07 }}
-            className="flex items-center gap-2 p-2.5 rounded-lg bg-surface border border-border hover:border-warning/30 transition-colors cursor-pointer">
-            <div className="relative shrink-0">
-              <img src={s.thumbnailUrl} alt="" className="w-8 h-8 rounded-lg object-cover" />
-              <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-[#080d1a] bg-warning" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-medium truncate">{s.label}</p>
-              <ConfidenceBadge score={s.confidenceScore} size="sm" showLabel={false} />
-            </div>
-          </motion.div>
-        ))}
-      </div>
-    </div>
   );
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const stats = mockDashboardStats;
-  const criticalAlerts = mockAlerts.filter(a => a.severity === 'critical' && !a.read);
+  const criticals = mockAlerts.filter(a => a.severity==='critical' && !a.read);
+
+  const STATS = [
+    { label:'Active Cases',     value:stats.activeCases,   sub:'4 current + 2 historical', icon:Shield,       color:'#00b4d8', trend:'+12%' },
+    { label:'Evidence Items',   value:stats.totalEvidence, sub:`${stats.processingQueue} in queue`, icon:Film, color:'#1565c0', trend:'+8%'  },
+    { label:'Suspects Tracked', value:stats.suspectsTracked, sub:'ReID active',             icon:Users,        color:'#f59e0b'               },
+    { label:'AI Accuracy',      value:`${stats.aiAccuracy}%`, sub:'model performance',      icon:BrainCircuit, color:'#22c55e', trend:'+2.3%' },
+    { label:'Queue',            value:stats.processingQueue,  sub:'~14 min avg',            icon:Target,       color:'#00b4d8'               },
+    { label:'Reports',          value:stats.reportsGenerated, sub:'this month',             icon:FileText,     color:'#1565c0', trend:'+5'    },
+    { label:'Alerts',           value:stats.alertsToday,    sub:'1 critical',               icon:AlertTriangle,color:'#f59e0b'               },
+    { label:'Detection Rate',   value:'94.2%',              sub:'frame accuracy',           icon:TrendingUp,   color:'#22c55e', trend:'+1.8%' },
+  ];
+
+  const SERVICES = [
+    { l:'API',      icon:Zap,      ok:true,  ms:'4ms'   },
+    { l:'Database', icon:Database, ok:true,  ms:'2ms'   },
+    { l:'AI',       icon:Cpu,      ok:true,  ms:'120ms' },
+    { l:'Redis',    icon:Activity, ok:true,  ms:'1ms'   },
+    { l:'Network',  icon:Wifi,     ok:true,  ms:'8ms'   },
+  ];
 
   return (
-    <div className="p-6 space-y-6 max-w-[1600px] mx-auto overflow-y-auto h-full">
-      {/* Header row */}
-      <div className="flex items-start justify-between gap-6">
-        <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
-          <div className="flex items-center gap-2 mb-1">
-            <div className="w-1 h-5 rounded-full bg-accent" />
-            <span className="text-xs font-semibold text-accent/80 tracking-widest uppercase">Operations Center</span>
-          </div>
-          <h1 className="text-3xl font-bold tracking-tight">Intelligence Dashboard</h1>
-          <p className="text-sm text-muted-foreground mt-1">{stats.activeCases} active · {stats.processingQueue} queued · AI accuracy {stats.aiAccuracy}%</p>
-        </motion.div>
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }}>
-          <LiveClock />
-        </motion.div>
-      </div>
+    <div style={{ height:'100%', overflowY:'auto' }}>
+      <div style={{ maxWidth:1600, margin:'0 auto', padding:'1.5rem', display:'flex', flexDirection:'column', gap:'1.5rem' }}>
 
-      {/* Critical alert banner */}
-      {criticalAlerts.map(alert => (
-        <motion.div key={alert.id} initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
-          className="flex items-center gap-4 p-4 rounded-xl bg-danger/6 border border-danger/25 backdrop-blur-sm">
-          <div className="w-8 h-8 rounded-lg bg-danger/15 flex items-center justify-center shrink-0">
-            <AlertTriangle className="w-4 h-4 text-danger" />
-          </div>
-          <div className="flex-1">
-            <p className="text-sm font-semibold text-danger">{alert.title}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">{alert.message}</p>
-          </div>
-          <Link href="/investigation" className="shrink-0 text-xs border border-danger/25 text-danger/80 hover:text-danger hover:border-danger/50 px-3 py-1.5 rounded-lg transition-colors">
-            Investigate →
-          </Link>
-        </motion.div>
-      ))}
-
-      {/* Stats row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatTile icon={Shield} label="Active Cases" value={stats.activeCases} color="text-accent" sub="4 current + 2 historical" />
-        <StatTile icon={Film} label="Evidence Items" value={stats.totalEvidence} color="text-primary" sub={`${stats.processingQueue} in queue`} />
-        <StatTile icon={Users} label="Suspects Tracked" value={stats.suspectsTracked} color="text-warning" sub="Cross-camera ReID live" />
-        <StatTile icon={BrainCircuit} label="AI Accuracy" value={`${stats.aiAccuracy}%`} color="text-success" sub="+2.3% vs last month" />
-        <StatTile icon={Target} label="Processing Queue" value={stats.processingQueue} color="text-accent" sub="~14 min avg" />
-        <StatTile icon={FileText} label="Reports" value={stats.reportsGenerated} color="text-primary" sub="This month" />
-        <StatTile icon={AlertTriangle} label="Alerts Today" value={stats.alertsToday} color="text-warning" sub="1 critical" />
-        <StatTile icon={TrendingUp} label="Detection Rate" value="94.2%" color="text-success" sub="+1.8% vs last week" />
-      </div>
-
-      {/* Main grid */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        {/* Cases — 2 cols */}
-        <div className="xl:col-span-2 space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold flex items-center gap-2">
-              <Eye className="w-4 h-4 text-accent" /> Active Investigations
-            </h2>
-            <Link href="/cases" className="text-xs text-accent hover:text-accent-glow flex items-center gap-1">All cases <ChevronRight className="w-3 h-3" /></Link>
-          </div>
-          {mockCases.slice(0, 5).map((c, i) => <CaseCard key={c.id} c={c} index={i} />)}
+        {/* Header */}
+        <div className="flex items-start justify-between gap-6">
+          <motion.div initial={{ opacity:0, y:-8 }} animate={{ opacity:1, y:0 }}>
+            <div className="flex items-center gap-2 mb-1">
+              <div style={{ width:4, height:20, borderRadius:2, background:'var(--accent)', boxShadow:`0 0 10px var(--accent-glow)` }} />
+              <span className="text-2xs font-bold uppercase tracking-widest" style={{ color:'var(--accent)' }}>Operations Center</span>
+            </div>
+            <h1 className="text-3xl font-bold tracking-tight">Intelligence Dashboard</h1>
+            <p className="text-sm mt-1" style={{ color:'var(--text-secondary)' }}>
+              {stats.activeCases} active · {stats.processingQueue} queued · AI accuracy {stats.aiAccuracy}%
+            </p>
+          </motion.div>
+          <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} transition={{ delay:0.1 }}>
+            <LiveClock />
+          </motion.div>
         </div>
 
-        {/* Right col */}
-        <div className="space-y-4">
-          <AlertsFeed />
-          <SuspectsPanel />
-          <DetectionChart />
-        </div>
-      </div>
+        {/* Critical alert */}
+        {criticals.map(a => (
+          <motion.div key={a.id} initial={{ opacity:0, y:-4 }} animate={{ opacity:1, y:0 }}
+            style={{ display:'flex', alignItems:'center', gap:16, padding:'14px 20px', borderRadius:14, background:'rgba(239,68,68,0.06)', border:'1px solid rgba(239,68,68,0.2)', backdropFilter:'blur(8px)' }}>
+            <div style={{ width:36, height:36, borderRadius:10, background:'rgba(239,68,68,0.12)', border:'1px solid rgba(239,68,68,0.25)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+              <AlertTriangle className="w-5 h-5" style={{ color:'#ef4444' }} />
+            </div>
+            <div style={{ flex:1 }}>
+              <p className="text-sm font-bold" style={{ color:'#f87171' }}>{a.title}</p>
+              <p className="text-xs mt-0.5" style={{ color:'var(--text-secondary)' }}>{a.message}</p>
+            </div>
+            <Link href="/investigation"
+              className="text-xs font-semibold px-4 py-2 rounded-xl transition-all hover:scale-105"
+              style={{ background:'rgba(239,68,68,0.12)', border:'1px solid rgba(239,68,68,0.3)', color:'#f87171' }}>
+              Investigate →
+            </Link>
+          </motion.div>
+        ))}
 
-      {/* Charts row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <CaseActivityChart />
-        {/* AI pipeline */}
-        <div className="card-panel rounded-xl overflow-hidden">
-          <div className="flex items-center gap-2 p-4 border-b border-border">
-            <BrainCircuit className="w-4 h-4 text-accent" />
-            <span className="text-sm font-semibold">AI Processing Pipeline</span>
-            <div className="ml-auto flex items-center gap-1.5">
-              <div className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
-              <span className="text-xs text-accent/70">Live</span>
+        {/* Stats grid */}
+        <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} transition={{ delay:0.05 }}
+          className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {STATS.map((s,i) => <StatCard key={s.label} {...s} />)}
+        </motion.div>
+
+        {/* Main 3-col grid */}
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 340px', gap:'1.25rem' }}>
+
+          {/* Cases list */}
+          <div style={{ gridColumn:'1/3' }}>
+            <div className="card-panel-flat overflow-hidden" style={{ borderRadius:16 }}>
+              <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom:'1px solid var(--border)', background:'rgba(255,255,255,0.01)' }}>
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background:'var(--accent-dim)' }}>
+                    <Eye className="w-4 h-4" style={{ color:'var(--accent)' }} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold">Active Investigations</p>
+                    <p className="text-2xs" style={{ color:'var(--text-dim)' }}>{mockCases.length} total cases</p>
+                  </div>
+                </div>
+                <Link href="/cases" className="flex items-center gap-1 text-xs font-semibold transition-colors hover:text-[#38e1ff]" style={{ color:'var(--accent)' }}>
+                  View all <ArrowUpRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+              {mockCases.slice(0,6).map((c,i) => <CaseRow key={c.id} c={c} i={i} />)}
             </div>
           </div>
-          <div className="p-4 space-y-3">
-            {[
-              { case: 'PAN-1888-0001', file: 'Historical photograph batch', status: 'completed', conf: 71 },
-              { case: 'PAN-1971-0001', file: 'NORJAK FBI files', status: 'completed', conf: 41 },
-              { case: 'PAN-2026-0047', file: 'Station Camera 4', status: 'completed', conf: 92 },
-              { case: 'PAN-1969-0001', file: 'Cipher image analysis', status: 'processing', conf: 0 },
-            ].map((job, i) => (
-              <div key={i} className="flex items-center gap-3 p-3 rounded-lg bg-surface border border-border/60">
-                <div className={cn('w-2 h-2 rounded-full shrink-0', job.status === 'completed' ? 'bg-success' : 'bg-accent animate-pulse')} />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-mono text-muted-foreground/60">{job.case}</p>
-                  <p className="text-sm truncate">{job.file}</p>
-                </div>
-                {job.conf > 0 ? <ConfidenceBadge score={job.conf} size="sm" showLabel={false} /> : (
-                  <span className="text-2xs text-accent/70 font-mono">running…</span>
-                )}
+
+          {/* Right column */}
+          <div style={{ display:'flex', flexDirection:'column', gap:'1.25rem' }}>
+
+            {/* Alert feed */}
+            <div className="card-panel-flat overflow-hidden" style={{ borderRadius:16 }}>
+              <div className="flex items-center gap-2.5 px-4 py-3.5" style={{ borderBottom:'1px solid var(--border)', background:'rgba(255,255,255,0.01)' }}>
+                <div className="w-2 h-2 rounded-full bg-danger animate-pulse" style={{ boxShadow:'0 0 8px #ef4444' }} />
+                <Radio className="w-4 h-4" style={{ color:'#ef4444' }} />
+                <span className="text-sm font-bold">Live Alerts</span>
+                <span className="badge-critical text-2xs ml-1">{mockAlerts.filter(a=>!a.read).length}</span>
               </div>
-            ))}
+              {mockAlerts.map((a,i) => (
+                <motion.div key={a.id} initial={{ opacity:0, x:12 }} animate={{ opacity:1, x:0 }} transition={{ delay:i*0.07 }}
+                  className="flex gap-3 px-4 py-3 cursor-pointer"
+                  style={{ borderBottom:'1px solid var(--border)', background: !a.read ? 'rgba(0,180,216,0.03)' : 'transparent', transition:'background 0.15s' }}>
+                  <div className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0" style={{ background: a.severity==='critical'?'#ef4444':a.severity==='warning'?'#f59e0b':'#00b4d8' }} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold">{a.title}</p>
+                    <p className="text-xs line-clamp-2 mt-0.5 leading-relaxed" style={{ color:'var(--text-secondary)' }}>{a.message}</p>
+                    <p className="text-2xs mt-1" style={{ color:'var(--text-dim)' }}>{formatRelativeTime(a.createdAt)}</p>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+
+            {/* System health */}
+            <div className="card-panel-flat overflow-hidden" style={{ borderRadius:16 }}>
+              <div className="flex items-center justify-between px-4 py-3.5" style={{ borderBottom:'1px solid var(--border)', background:'rgba(255,255,255,0.01)' }}>
+                <div className="flex items-center gap-2">
+                  <Activity className="w-4 h-4" style={{ color:'var(--accent)' }} />
+                  <span className="text-sm font-bold">System Health</span>
+                </div>
+                <span className="flex items-center gap-1.5 text-2xs font-bold" style={{ color:'#4ade80' }}>
+                  <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" /> All Operational
+                </span>
+              </div>
+              <div className="p-4 space-y-2">
+                {SERVICES.map(s => {
+                  const Icon = s.icon;
+                  return (
+                    <div key={s.l} className="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors" style={{ border:'1px solid var(--border)' }}>
+                      <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ background:'var(--accent-dim)' }}>
+                        <Icon className="w-3.5 h-3.5" style={{ color:'var(--accent)' }} />
+                      </div>
+                      <span className="text-xs font-semibold flex-1">{s.l}</span>
+                      <span className="text-2xs font-mono" style={{ color:'#4ade80' }}>{s.ms}</span>
+                      <div className="w-1.5 h-1.5 rounded-full" style={{ background:'#22c55e', boxShadow:'0 0 6px #22c55e' }} />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Suspects */}
+            <div className="card-panel-flat overflow-hidden" style={{ borderRadius:16 }}>
+              <div className="flex items-center justify-between px-4 py-3.5" style={{ borderBottom:'1px solid var(--border)', background:'rgba(255,255,255,0.01)' }}>
+                <div className="flex items-center gap-2">
+                  <Target className="w-4 h-4" style={{ color:'#f59e0b' }} />
+                  <span className="text-sm font-bold">Suspects</span>
+                </div>
+                <Link href="/tracking" className="text-xs font-semibold" style={{ color:'var(--accent)' }}>All →</Link>
+              </div>
+              <div className="p-3 space-y-2">
+                {mockSuspects.slice(0,4).map((s,i) => (
+                  <motion.div key={s.id} initial={{ opacity:0, scale:0.95 }} animate={{ opacity:1, scale:1 }} transition={{ delay:i*0.06 }}
+                    className="flex items-center gap-2.5 p-2.5 rounded-xl cursor-pointer transition-colors"
+                    style={{ border:'1px solid var(--border)', transition:'all 0.15s' }}>
+                    <div className="relative shrink-0">
+                      <img src={s.thumbnailUrl} alt="" className="w-8 h-8 rounded-xl object-cover" />
+                      <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2" style={{ background:'#f59e0b', borderColor:'var(--bg-surface)' }} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-bold truncate">{s.label}</p>
+                      <p className="text-2xs" style={{ color:'var(--text-dim)' }}>{s.cameras.length} cams</p>
+                    </div>
+                    <ConfidenceBadge score={s.confidenceScore} size="sm" showLabel={false} />
+                  </motion.div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
+
+        {/* Charts row */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <DetectionChart />
+          <CaseActivityChart />
+        </div>
+
+        {/* AI Pipeline */}
+        <div className="card-panel-flat overflow-hidden" style={{ borderRadius:16 }}>
+          <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom:'1px solid var(--border)', background:'rgba(255,255,255,0.01)' }}>
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background:'var(--accent-dim)' }}>
+                <BrainCircuit className="w-4 h-4" style={{ color:'var(--accent)' }} />
+              </div>
+              <div>
+                <p className="text-sm font-bold">AI Processing Pipeline</p>
+                <p className="text-2xs" style={{ color:'var(--text-dim)' }}>Active jobs</p>
+              </div>
+            </div>
+            <span className="flex items-center gap-1.5 text-xs font-semibold" style={{ color:'var(--accent)' }}>
+              <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background:'var(--accent)' }} /> Live
+            </span>
+          </div>
+          <div className="overflow-x-auto">
+            <table style={{ width:'100%', borderCollapse:'collapse' }}>
+              <thead>
+                <tr style={{ background:'rgba(255,255,255,0.02)' }}>
+                  {['Case','File','Status','Duration','Detections','Confidence'].map(h => (
+                    <th key={h} style={{ padding:'10px 20px', textAlign:'left', fontSize:10, fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', color:'var(--text-dim)', borderBottom:'1px solid var(--border)' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {[
+                  { c:'PAN-1888-0001', f:'Whitechapel photo batch', s:'completed', d:'2h 14m', det:'47 images', conf:71 },
+                  { c:'PAN-1971-0001', f:'NORJAK FBI files',        s:'completed', d:'3h 02m', det:'89 docs',   conf:41 },
+                  { c:'PAN-2026-0047', f:'Station Camera 4',        s:'completed', d:'45m',    det:'124 frames',conf:92 },
+                  { c:'PAN-1969-0001', f:'Cipher image analysis',   s:'processing',d:'running…',det:'—',        conf:0  },
+                ].map((job,i) => (
+                  <tr key={i} className="data-row">
+                    <td style={{ padding:'12px 20px' }}><span style={{ fontFamily:'monospace', fontSize:11, color:'var(--text-dim)' }}>{job.c}</span></td>
+                    <td style={{ padding:'12px 20px' }}><span style={{ fontSize:13, fontWeight:500 }}>{job.f}</span></td>
+                    <td style={{ padding:'12px 20px' }}>
+                      <span className={job.s==='completed'?'badge-active':job.s==='processing'?'badge-info':'badge-pending'}>{job.s}</span>
+                    </td>
+                    <td style={{ padding:'12px 20px' }}><span style={{ fontFamily:'monospace', fontSize:12, color:'var(--text-secondary)' }}>{job.d}</span></td>
+                    <td style={{ padding:'12px 20px' }}><span style={{ fontSize:12, color:'var(--text-secondary)' }}>{job.det}</span></td>
+                    <td style={{ padding:'12px 20px' }}>
+                      {job.conf > 0 ? <ConfidenceBadge score={job.conf} size="sm" showLabel={false} /> : <span style={{ color:'var(--text-dim)', fontSize:12 }}>—</span>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
       </div>
     </div>
   );

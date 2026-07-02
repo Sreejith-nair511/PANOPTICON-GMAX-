@@ -7,43 +7,28 @@ import { AiPanel } from '@/components/ai/AiPanel';
 import { GlobalSearch } from './GlobalSearch';
 import { useUIStore } from '@/store/uiStore';
 import { motion, AnimatePresence } from 'framer-motion';
-import { cn } from '@/lib/utils';
 
-interface AppShellProps {
-  children: React.ReactNode;
-}
-
-export function AppShell({ children }: AppShellProps) {
+export function AppShell({ children }: { children: React.ReactNode }) {
   const { aiPanelOpen } = useUIStore();
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-background">
+    <div style={{ display:'flex', height:'100vh', width:'100vw', overflow:'hidden', background:'var(--bg-base)' }}>
       <GlobalSearch />
-      {/* Sidebar */}
       <Sidebar />
-
-      {/* Main area */}
-      <div className="flex flex-col flex-1 overflow-hidden min-w-0">
+      <div style={{ display:'flex', flexDirection:'column', flex:1, overflow:'hidden', minWidth:0 }}>
         <Header />
-
-        {/* Content + optional AI panel */}
-        <div className="flex flex-1 overflow-hidden">
-          {/* Page content */}
-          <main className="flex-1 overflow-y-auto overflow-x-hidden">
-            <div className="h-full">
-              {children}
-            </div>
+        <div style={{ display:'flex', flex:1, overflow:'hidden' }}>
+          <main style={{ flex:1, overflowY:'auto', overflowX:'hidden' }}>
+            {children}
           </main>
-
-          {/* AI Panel */}
           <AnimatePresence>
             {aiPanelOpen && (
               <motion.div
-                initial={{ width: 0, opacity: 0 }}
-                animate={{ width: 400, opacity: 1 }}
-                exit={{ width: 0, opacity: 0 }}
-                transition={{ duration: 0.25, ease: 'easeInOut' }}
-                className="shrink-0 overflow-hidden border-l border-border"
+                initial={{ width:0, opacity:0 }}
+                animate={{ width:380, opacity:1 }}
+                exit={{ width:0, opacity:0 }}
+                transition={{ duration:0.22, ease:[0.4,0,0.2,1] }}
+                style={{ flexShrink:0, overflow:'hidden', borderLeft:'1px solid var(--border)' }}
               >
                 <AiPanel />
               </motion.div>
