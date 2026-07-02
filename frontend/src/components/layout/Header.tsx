@@ -1,157 +1,96 @@
 'use client';
 
 import React, { useState } from 'react';
-import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useQuery } from '@tanstack/react-query';
-import {
-  Search,
-  Bell,
-  BrainCircuit,
-  ChevronDown,
-  LogOut,
-  User,
-  Settings,
-  Command,
-  Zap,
-} from 'lucide-react';
-import { formatRelativeTime } from '@/lib/utils';
+import { Search, Bell, BrainCircuit, Command, LogOut, User, Settings, ChevronDown, Zap, X } from 'lucide-react';
 import { useUIStore } from '@/store/uiStore';
 import { useAuthStore } from '@/store/authStore';
-import { dashboardApi } from '@/lib/api';
-import { cn, initials } from '@/lib/utils';
+import { mockAlerts } from '@/lib/mockData';
+import { cn, initials, formatRelativeTime } from '@/lib/utils';
+import { ThemeSwitcher } from '@/components/theme/ThemeSwitcher';
 
 export function Header() {
-  const { setGlobalSearchOpen, setAiPanelOpen, aiPanelOpen } = useUIStore();
+  const { unreadCount, setGlobalSearchOpen, setAiPanelOpen, aiPanelOpen, markAllRead } = useUIStore();
   const { user, logout } = useAuthStore();
-  const [showNotifications, setShowNotifications] = useState(false);
-  const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showNotif, setShowNotif]   = useState(false);
+  const [showUser,  setShowUser]    = useState(false);
 
-  // Load alerts from backend
-  const { data: alertsData } = useQuery({
-    queryKey: ['dashboard-alerts'],
-    queryFn: () => dashboardApi.alerts(),
-    refetchInterval: 60_000,
-    retry: 1,
-  });
-
-  const recentAlerts = (alertsData?.data ?? []).slice(0, 5);
-  const unreadCount = recentAlerts.filter(a => !a.read).length;
+  const closeAll = () => { setShowNotif(false); setShowUser(false); };
 
   return (
-    <header className="h-14 border-b border-border bg-[#080d1a]/90 backdrop-blur-sm flex items-center justify-between px-4 gap-4 shrink-0 z-20">
-      {/* Left: breadcrumb / title area */}
+    <header className="h-14 shrink-0 flex items-center justify-between px-5 gap-4 z-20"
+      style={{ borderBottom:'1px solid rgba(255,255,255,0.05)', background:'rgba(4,6,14,0.92)', backdropFilter:'blur(12px)' }}>
+
+      {/* Left: status */}
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-2">
-          <div className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
-          <span className="text-sm text-muted-foreground font-mono tracking-wider">
-            PANOPTICON v1.0
-          </span>
+          <div className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" style={{ boxShadow:'0 0 8px #00b4d8' }} />
+          <span className="text-xs font-mono text-muted-foreground/60 tracking-widest">PANOPTICON v1.0</span>
         </div>
-        <div className="text-muted-foreground/30">|</div>
-        <div className="flex items-center gap-1.5">
-          <Zap className="w-3.5 h-3.5 text-success" />
-          <span className="text-xs text-success/80">Operational</span>
+        <div className="hidden sm:flex items-center gap-1.5 text-xs text-success/70">
+          <Zap className="w-3.5 h-3.5" /> Operational
         </div>
       </div>
 
-      {/* Center: global search */}
-      <button
-        onClick={() => setGlobalSearchOpen(true)}
-        className="hidden md:flex items-center gap-3 px-4 py-2 rounded-lg bg-surface border border-border text-muted-foreground hover:border-accent/40 hover:text-foreground transition-all duration-150 max-w-sm w-full"
-      >
-        <Search className="w-4 h-4 shrink-0" />
-        <span className="text-sm flex-1 text-left">Search cases, evidence, suspects...</span>
-        <kbd className="flex items-center gap-1 text-2xs bg-surface-raised px-1.5 py-0.5 rounded border border-border">
+      {/* Center: search */}
+      <button onClick={() => setGlobalSearchOpen(true)}
+        className="hidden md:flex items-center gap-3 px-4 py-2 rounded-xl text-sm text-muted-foreground/60 transition-all duration-150 max-w-md w-full hover:text-muted-foreground"
+        style={{ background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.07)' }}>
+        <Search className="w-3.5 h-3.5 shrink-0" />
+        <span className="flex-1 text-left text-xs">Search cases, suspects, evidence…</span>
+        <kbd className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded font-mono" style={{ background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.1)' }}>
           <Command className="w-2.5 h-2.5" />K
         </kbd>
       </button>
 
-      {/* Right: actions */}
+      {/* Right */}
       <div className="flex items-center gap-2">
-        {/* AI Panel toggle */}
-        <button
-          onClick={() => setAiPanelOpen(!aiPanelOpen)}
-          className={cn(
-            'flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-150 border',
-            aiPanelOpen
-              ? 'bg-accent/10 border-accent/30 text-accent'
-              : 'bg-transparent border-border text-muted-foreground hover:border-accent/30 hover:text-accent'
-          )}
-        >
-          <BrainCircuit className="w-4 h-4" />
+        {/* Theme Switcher */}
+        <ThemeSwitcher />
+
+        {/* AI Toggle */}
+        <button onClick={() => setAiPanelOpen(!aiPanelOpen)}
+          className={cn('flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border',
+            aiPanelOpen ? 'bg-accent/12 border-accent/30 text-accent' : 'border-white/8 text-muted-foreground hover:text-foreground hover:border-white/15')}>
+          <BrainCircuit className="w-3.5 h-3.5" />
           <span className="hidden sm:inline">AI Copilot</span>
         </button>
 
         {/* Notifications */}
         <div className="relative">
-          <button
-            onClick={() => {
-              setShowNotifications(!showNotifications);
-              setShowUserMenu(false);
-            }}
-            className="relative w-9 h-9 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-surface-raised transition-colors border border-transparent hover:border-border"
-          >
+          <button onClick={() => { setShowNotif(n => !n); setShowUser(false); }}
+            className="relative w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+            style={{ border:'1px solid transparent' }}>
             <Bell className="w-4 h-4" />
             {unreadCount > 0 && (
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-danger animate-pulse" />
+              <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-danger" style={{ boxShadow:'0 0 6px #ef4444' }} />
             )}
           </button>
-
           <AnimatePresence>
-            {showNotifications && (
-              <motion.div
-                initial={{ opacity: 0, y: 8, scale: 0.96 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 8, scale: 0.96 }}
-                transition={{ duration: 0.15 }}
-                className="absolute right-0 top-11 w-80 glass-strong rounded-xl border border-border shadow-panel overflow-hidden z-50"
-              >
-                <div className="flex items-center justify-between p-4 border-b border-border">
+            {showNotif && (
+              <motion.div initial={{ opacity:0, y:6, scale:0.97 }} animate={{ opacity:1, y:0, scale:1 }} exit={{ opacity:0, y:6, scale:0.97 }} transition={{ duration:0.13 }}
+                className="absolute right-0 top-11 w-80 rounded-2xl overflow-hidden z-50 shadow-panel"
+                style={{ background:'rgba(5,8,18,0.97)', border:'1px solid rgba(255,255,255,0.08)', backdropFilter:'blur(24px)' }}>
+                <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
                   <span className="text-sm font-semibold">Notifications</span>
-                  {unreadCount > 0 && (
-                    <span className="text-xs text-muted-foreground">{unreadCount} unread</span>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {unreadCount > 0 && <button onClick={markAllRead} className="text-xs text-accent hover:text-accent-glow">Mark all read</button>}
+                    <button onClick={closeAll} className="text-muted-foreground hover:text-foreground"><X className="w-3.5 h-3.5" /></button>
+                  </div>
                 </div>
-                <div className="max-h-80 overflow-y-auto">
-                  {recentAlerts.length === 0 ? (
-                    <div className="p-8 text-center">
-                      <Bell className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
-                      <p className="text-sm text-muted-foreground">No notifications</p>
-                    </div>
-                  ) : (
-                    recentAlerts.map((alert) => (
-                    <div
-                      key={alert.id}
-                      className={cn(
-                        'flex gap-3 p-4 border-b border-border/50 hover:bg-surface-raised/50 transition-colors cursor-pointer',
-                        !alert.read && 'bg-accent/5'
-                      )}
-                    >
-                      <div
-                        className={cn('w-2 h-2 rounded-full mt-1 shrink-0', {
-                          'bg-danger': alert.severity === 'critical',
-                          'bg-warning': alert.severity === 'warning',
-                          'bg-accent': alert.severity === 'info',
-                        })}
-                      />
+                <div className="max-h-72 overflow-y-auto">
+                  {mockAlerts.map(alert => (
+                    <div key={alert.id} className={cn('flex gap-3 px-4 py-3 cursor-pointer hover:bg-white/3 transition-colors', !alert.read && 'bg-accent/3')}
+                      style={{ borderBottom:'1px solid rgba(255,255,255,0.04)' }}>
+                      <div className={cn('w-1.5 h-1.5 rounded-full mt-1.5 shrink-0',
+                        alert.severity==='critical'?'bg-danger':alert.severity==='warning'?'bg-warning':'bg-accent')} />
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground">{alert.title}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
-                          {alert.message}
-                        </p>
-                        <p className="text-2xs text-muted-foreground/60 mt-1">
-                          {formatRelativeTime(alert.createdAt)}
-                        </p>
+                        <p className="text-xs font-semibold">{alert.title}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2 leading-relaxed">{alert.message}</p>
+                        <p className="text-[10px] text-muted-foreground/40 mt-1">{formatRelativeTime(alert.createdAt)}</p>
                       </div>
                     </div>
-                  ))
-                  )}
-                </div>
-                <div className="p-3">
-                  <button className="w-full text-center text-xs text-accent hover:text-accent-glow transition-colors py-1">
-                    View all notifications
-                  </button>
+                  ))}
                 </div>
               </motion.div>
             )}
@@ -160,65 +99,37 @@ export function Header() {
 
         {/* User menu */}
         <div className="relative">
-          <button
-            onClick={() => {
-              setShowUserMenu(!showUserMenu);
-              setShowNotifications(false);
-            }}
-            className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-surface-raised transition-colors border border-transparent hover:border-border"
-          >
-            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#1565C0] to-[#00B4D8] flex items-center justify-center">
-              <span className="text-xs font-bold text-white">
-                {user ? initials(user.name) : 'AN'}
-              </span>
+          <button onClick={() => { setShowUser(u => !u); setShowNotif(false); }}
+            className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-lg transition-colors hover:bg-white/4">
+            <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white"
+              style={{ background:'linear-gradient(135deg,#1565c0,#00b4d8)' }}>
+              {user ? initials(user.name) : 'AN'}
             </div>
-            <span className="hidden sm:block text-sm font-medium">
-              {user?.name?.split(' ')[0] ?? 'Analyst'}
-            </span>
-            <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
+            <span className="hidden sm:block text-sm font-medium">{user?.name?.split(' ')[0] ?? 'Analyst'}</span>
+            <ChevronDown className="w-3 h-3 text-muted-foreground/60" />
           </button>
-
           <AnimatePresence>
-            {showUserMenu && (
-              <motion.div
-                initial={{ opacity: 0, y: 8, scale: 0.96 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 8, scale: 0.96 }}
-                transition={{ duration: 0.15 }}
-                className="absolute right-0 top-11 w-52 glass-strong rounded-xl border border-border shadow-panel overflow-hidden z-50"
-              >
-                <div className="p-4 border-b border-border">
+            {showUser && (
+              <motion.div initial={{ opacity:0, y:6, scale:0.97 }} animate={{ opacity:1, y:0, scale:1 }} exit={{ opacity:0, y:6, scale:0.97 }} transition={{ duration:0.13 }}
+                className="absolute right-0 top-11 w-52 rounded-2xl overflow-hidden z-50 shadow-panel"
+                style={{ background:'rgba(5,8,18,0.97)', border:'1px solid rgba(255,255,255,0.08)', backdropFilter:'blur(24px)' }}>
+                <div className="p-4" style={{ borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
                   <p className="text-sm font-semibold">{user?.name ?? 'Analyst'}</p>
-                  <p className="text-xs text-muted-foreground">{user?.email ?? 'analyst@panopticon.gov'}</p>
-                  <span className="badge-info mt-2 inline-block capitalize">
-                    {user?.role ?? 'investigator'}
-                  </span>
+                  <p className="text-xs text-muted-foreground mt-0.5">{user?.email ?? 'analyst@panopticon.gov'}</p>
+                  <span className="badge-info text-[10px] mt-2 inline-block capitalize">{user?.role ?? 'investigator'}</span>
                 </div>
                 <div className="p-2">
-                  {[
-                    { label: 'Profile', icon: User, href: '/settings' },
-                    { label: 'Settings', icon: Settings, href: '/settings' },
-                  ].map((item) => {
-                    const Icon = item.icon;
+                  {[{l:'Profile',i:User,h:'/settings'},{l:'Settings',i:Settings,h:'/settings'}].map(item=>{
+                    const Icon = item.i;
                     return (
-                      <Link
-                        key={item.label}
-                        href={item.href}
-                        onClick={() => setShowUserMenu(false)}
-                        className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-surface-raised transition-colors text-left"
-                      >
-                        <Icon className="w-4 h-4" />
-                        {item.label}
-                      </Link>
+                      <button key={item.l} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors text-left">
+                        <Icon className="w-3.5 h-3.5" />{item.l}
+                      </button>
                     );
                   })}
-                  <div className="my-1 border-t border-border" />
-                  <button
-                    onClick={logout}
-                    className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-danger hover:bg-danger/10 transition-colors text-left"
-                  >
-                    <LogOut className="w-4 h-4" />
-                    Sign Out
+                  <div className="my-1" style={{ borderTop:'1px solid rgba(255,255,255,0.06)' }} />
+                  <button onClick={logout} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-danger hover:bg-danger/8 transition-colors text-left">
+                    <LogOut className="w-3.5 h-3.5" /> Sign Out
                   </button>
                 </div>
               </motion.div>
@@ -227,16 +138,7 @@ export function Header() {
         </div>
       </div>
 
-      {/* Click outside to close dropdowns */}
-      {(showNotifications || showUserMenu) && (
-        <div
-          className="fixed inset-0 z-40"
-          onClick={() => {
-            setShowNotifications(false);
-            setShowUserMenu(false);
-          }}
-        />
-      )}
+      {(showNotif || showUser) && <div className="fixed inset-0 z-40" onClick={closeAll} />}
     </header>
   );
 }

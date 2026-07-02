@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import { Inter, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 import { Providers } from './providers';
 
@@ -7,6 +7,14 @@ const inter = Inter({
   subsets: ['latin'],
   variable: '--font-inter',
   display: 'swap',
+  weight: ['300', '400', '500', '600', '700', '800'],
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ['latin'],
+  variable: '--font-mono',
+  display: 'swap',
+  weight: ['400', '500', '600'],
 });
 
 export const metadata: Metadata = {
@@ -24,10 +32,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className="dark" suppressHydrationWarning>
       <head>
         <meta name="color-scheme" content="dark" />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
-      <body className={`${inter.variable} antialiased bg-background text-foreground overflow-hidden`}>
+      <body className={`${inter.variable} ${jetbrainsMono.variable} antialiased bg-background text-foreground overflow-hidden`} suppressHydrationWarning>
         <Providers>{children}</Providers>
       </body>
     </html>
