@@ -33,7 +33,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <meta name="color-scheme" content="dark" />
       </head>
-      <body className={`${inter.variable} ${jetbrainsMono.variable} antialiased bg-background text-foreground overflow-hidden`}>
+      <body className={`${inter.variable} ${jetbrainsMono.variable} antialiased bg-background text-foreground overflow-hidden`} suppressHydrationWarning>
         <Providers>{children}</Providers>
       </body>
     </html>

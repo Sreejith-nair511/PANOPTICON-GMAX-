@@ -27,25 +27,32 @@ const TYPE_CONFIG: Record<ResultType, { icon: React.ElementType; color: string; 
 
 function buildIndex(): SearchResult[] {
   const results: SearchResult[] = [];
-  mockCases.forEach(c => results.push({
-    id: c.id, type: 'case',
-    title: c.title, subtitle: `${c.caseNumber} · ${c.location}`,
-    href: `/cases/${c.id}`, time: c.updatedAt,
-  }));
-  mockEvidence.forEach(e => results.push({
-    id: e.id, type: 'evidence',
-    title: e.originalName, subtitle: `${e.type} · ${e.caseId}`,
-    href: `/evidence`, time: e.uploadedAt,
-  }));
-  mockSuspects.forEach(s => results.push({
-    id: s.id, type: 'suspect',
-    title: s.label, subtitle: s.description.slice(0, 60),
-    href: `/cases/${s.caseId}`,
-  }));
+  try {
+    (mockCases ?? []).forEach(c => results.push({
+      id: c.id, type: 'case',
+      title: c.title, subtitle: `${c.caseNumber} · ${c.location}`,
+      href: `/cases/${c.id}`, time: c.updatedAt,
+    }));
+    (mockEvidence ?? []).forEach(e => results.push({
+      id: e.id, type: 'evidence',
+      title: e.originalName, subtitle: `${e.type} · ${e.caseId}`,
+      href: `/evidence`, time: e.uploadedAt,
+    }));
+    (mockSuspects ?? []).forEach(s => results.push({
+      id: s.id, type: 'suspect',
+      title: s.label, subtitle: (s.description || '').slice(0, 60),
+      href: `/cases/${s.caseId}`,
+    }));
+  } catch { /* silent */ }
   return results;
 }
 
-const ALL_RESULTS = buildIndex();
+// Build lazily on first use instead of at module init
+let _cachedIndex: SearchResult[] | null = null;
+function getAllResults(): SearchResult[] {
+  if (!_cachedIndex) _cachedIndex = buildIndex();
+  return _cachedIndex;
+}
 
 export function GlobalSearch() {
   const { globalSearchOpen, setGlobalSearchOpen } = useUIStore();
@@ -55,11 +62,11 @@ export function GlobalSearch() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const results = query.trim().length > 1
-    ? ALL_RESULTS.filter(r =>
+    ? getAllResults().filter(r =>
         r.title.toLowerCase().includes(query.toLowerCase()) ||
         r.subtitle.toLowerCase().includes(query.toLowerCase())
       ).slice(0, 10)
-    : ALL_RESULTS.slice(0, 8);
+    : getAllResults().slice(0, 8);
 
   useEffect(() => {
     if (globalSearchOpen) {

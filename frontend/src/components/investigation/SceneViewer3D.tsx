@@ -1,107 +1,96 @@
 'use client';
 
-import React, { useRef, Suspense, useMemo } from 'react';
+import React, { useRef, Suspense, useMemo, useEffect, useState } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { OrbitControls, Grid, Text, Line, Sphere, Box, Html } from '@react-three/drei';
+import { OrbitControls, Grid, Html, Line } from '@react-three/drei';
 import * as THREE from 'three';
-import { motion } from 'framer-motion';
-import { Box as BoxIcon, Maximize2, RotateCcw } from 'lucide-react';
+import { Box as BoxIcon } from 'lucide-react';
 
-// ── Types ────────────────────────────────────────────────────────────────────
-interface Camera3D {
+// ── Types ─────────────────────────────────────────────────────────────────────
+interface Camera3DData {
   id: string;
   label: string;
   position: [number, number, number];
-  rotation: [number, number, number];
-  color: string;
-  activeSuspects: number;
+  rotationY: number;
+  active: boolean;
 }
 
-interface SuspectPath {
-  id: string;
-  label: string;
-  color: string;
-  points: [number, number, number][];
-  currentIndex: number;
+const CAMERAS: Camera3DData[] = [
+  { id: 'CAM-STN-004', label: 'Platform 4',    position: [5, 3.5, 2],   rotationY: -0.8, active: true  },
+  { id: 'CAM-STN-002', label: 'Concourse',     position: [-5, 3.5, -3], rotationY: 0.6,  active: false },
+  { id: 'CAM-STN-001', label: 'South Entrance',position: [-9, 3.5, 6],  rotationY: 0.4,  active: false },
+  { id: 'CAM-STN-005', label: 'North Exit',    position: [9, 3.5, -5],  rotationY: -0.5, active: false },
+];
+
+const ALPHA_PATH: [number,number,number][] = [
+  [-9,0,6],[-5,0,3],[-1,0,1],[2,0,0.5],[5,0,0],[9,0,-5],
+];
+const BETA_PATH: [number,number,number][] = [
+  [-9,0,6.5],[-4.5,0,3.5],[-0.5,0,1.5],[2.5,0,1],[5.5,0,0.6],[9.5,0,-4.5],
+];
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function lerpPath(waypoints: [number,number,number][], t: number): THREE.Vector3 {
+  if (waypoints.length === 0) return new THREE.Vector3();
+  const segments = waypoints.length - 1;
+  const scaled = Math.max(0, Math.min(1, t)) * segments;
+  const idx = Math.min(Math.floor(scaled), segments - 1);
+  const frac = scaled - idx;
+  const a = new THREE.Vector3(...waypoints[idx]);
+  const b = new THREE.Vector3(...waypoints[Math.min(idx + 1, waypoints.length - 1)]);
+  return a.lerp(b, frac);
 }
-
-interface SceneViewerProps {
-  currentTime: number; // 0-1 normalised
-  className?: string;
-}
-
-// ── Static scene data (Central Station mock) ─────────────────────────────────
-const CAMERAS: Camera3D[] = [
-  { id: 'CAM-STN-004', label: 'Platform 4',   position: [4, 3, 2],  rotation: [0, -0.8, 0], color: '#00B4D8', activeSuspects: 2 },
-  { id: 'CAM-STN-002', label: 'Concourse',    position: [-5, 3, -3], rotation: [0, 0.6, 0],  color: '#00B4D8', activeSuspects: 0 },
-  { id: 'CAM-STN-001', label: 'South Entrance', position: [-8, 3, 6], rotation: [0, 0.4, 0], color: '#00B4D8', activeSuspects: 0 },
-  { id: 'CAM-STN-005', label: 'North Exit',   position: [8, 3, -5], rotation: [0, -0.5, 0], color: '#22C55E', activeSuspects: 0 },
-];
-
-// Suspect Alpha path through station
-const ALPHA_WAYPOINTS: [number, number, number][] = [
-  [-8, 0, 6],   // South entrance at t=0
-  [-4, 0, 3],   // Ticketing area
-  [-1, 0, 1],   // Moving toward platform
-  [2, 0, 0.5],  // Platform entrance
-  [4, 0, 0],    // Platform 4 — robbery
-  [7, 0, -4],   // North exit
-];
-
-const BETA_WAYPOINTS: [number, number, number][] = [
-  [-8, 0, 6.5],
-  [-3.5, 0, 3.5],
-  [-0.5, 0, 1.5],
-  [2.5, 0, 1],
-  [4.5, 0, 0.5],
-  [7.5, 0, -3.5],
-];
 
 // ── Camera model ──────────────────────────────────────────────────────────────
-function CameraModel({ cam, active }: { cam: Camera3D; active: boolean }) {
-  const meshRef = useRef<THREE.Mesh>(null);
-  useFrame((_, delta) => {
-    if (meshRef.current && active) {
-      meshRef.current.rotation.y += delta * 0.5;
+function CameraModel({ cam }: { cam: Camera3DData }) {
+  const groupRef = useRef<THREE.Group>(null);
+  useFrame(() => {
+    if (groupRef.current && cam.active) {
+      groupRef.current.rotation.y = Math.sin(Date.now() * 0.0008) * 0.3 + cam.rotationY;
     }
   });
-
   return (
-    <group position={cam.position} rotation={cam.rotation}>
+    <group ref={groupRef} position={cam.position} rotation={[0, cam.rotationY, 0]}>
       {/* Body */}
-      <mesh ref={meshRef} castShadow>
-        <boxGeometry args={[0.4, 0.25, 0.6]} />
-        <meshStandardMaterial color={active ? '#F59E0B' : '#1E2840'} metalness={0.8} roughness={0.2} />
+      <mesh castShadow>
+        <boxGeometry args={[0.5, 0.3, 0.7]} />
+        <meshStandardMaterial color={cam.active ? '#1a2a40' : '#111820'} metalness={0.8} roughness={0.2} />
       </mesh>
       {/* Lens */}
-      <mesh position={[0, 0, 0.35]}>
-        <cylinderGeometry args={[0.08, 0.1, 0.2, 16]} />
-        <meshStandardMaterial color="#111" metalness={0.9} roughness={0.1} />
+      <mesh position={[0, 0, 0.4]}>
+        <cylinderGeometry args={[0.09, 0.12, 0.22, 16]} />
+        <meshStandardMaterial color="#0a0a0a" metalness={0.95} roughness={0.05} />
       </mesh>
-      {/* Mount pole */}
-      <mesh position={[0, -1.5, 0]}>
-        <cylinderGeometry args={[0.04, 0.04, 3, 8]} />
-        <meshStandardMaterial color="#1E2840" metalness={0.6} roughness={0.4} />
+      {/* Mount */}
+      <mesh position={[0, -1.75, 0]}>
+        <cylinderGeometry args={[0.04, 0.04, 3.5, 8]} />
+        <meshStandardMaterial color="#111820" metalness={0.6} roughness={0.4} />
       </mesh>
       {/* Status LED */}
-      <mesh position={[0.22, 0.14, 0]}>
-        <sphereGeometry args={[0.04]} />
+      <mesh position={[0.26, 0.17, 0]}>
+        <sphereGeometry args={[0.045]} />
         <meshStandardMaterial
-          color={active ? '#F59E0B' : '#22C55E'}
-          emissive={active ? '#F59E0B' : '#22C55E'}
-          emissiveIntensity={active ? 2 : 1}
+          color={cam.active ? '#f59e0b' : '#22c55e'}
+          emissive={cam.active ? '#f59e0b' : '#22c55e'}
+          emissiveIntensity={cam.active ? 3 : 1.5}
         />
       </mesh>
-      {/* FOV cone */}
-      {active && (
-        <mesh position={[0, -0.3, 2]} rotation={[-Math.PI / 2, 0, 0]}>
-          <coneGeometry args={[1.5, 4, 16, 1, true]} />
-          <meshStandardMaterial color="#F59E0B" transparent opacity={0.06} side={THREE.DoubleSide} />
+      {/* FOV cone when active */}
+      {cam.active && (
+        <mesh position={[0, -0.4, 2.5]} rotation={[-Math.PI / 2, 0, 0]}>
+          <coneGeometry args={[2, 5, 16, 1, true]} />
+          <meshStandardMaterial color="#f59e0b" transparent opacity={0.04} side={THREE.DoubleSide} depthWrite={false} />
         </mesh>
       )}
-      {/* Label */}
-      <Html position={[0, 1, 0]} center>
-        <div className="text-2xs font-mono bg-black/70 text-accent px-1.5 py-0.5 rounded whitespace-nowrap border border-accent/30">
+      {/* HTML label */}
+      <Html position={[0, 1.2, 0]} center distanceFactor={14}>
+        <div style={{
+          fontSize: '10px', fontFamily: 'monospace', whiteSpace: 'nowrap',
+          background: 'rgba(0,0,0,0.75)', color: cam.active ? '#f59e0b' : '#00b4d8',
+          padding: '2px 6px', borderRadius: '4px',
+          border: `1px solid ${cam.active ? '#f59e0b44' : '#00b4d844'}`,
+          pointerEvents: 'none',
+        }}>
           {cam.id}
         </div>
       </Html>
@@ -109,46 +98,39 @@ function CameraModel({ cam, active }: { cam: Camera3D; active: boolean }) {
   );
 }
 
-// ── Suspect marker ────────────────────────────────────────────────────────────
-function SuspectMarker({
-  position,
-  label,
-  color,
-}: {
-  position: [number, number, number];
-  label: string;
-  color: string;
-}) {
-  const meshRef = useRef<THREE.Mesh>(null);
-  useFrame((_, delta) => {
-    if (meshRef.current) {
-      meshRef.current.position.y = Math.sin(Date.now() * 0.003) * 0.15 + 0.8;
+// ── Suspect figure ────────────────────────────────────────────────────────────
+function SuspectFigure({ position, color, label }: { position: THREE.Vector3; color: string; label: string }) {
+  const headRef = useRef<THREE.Mesh>(null);
+  useFrame(() => {
+    if (headRef.current) {
+      headRef.current.position.y = 0.9 + Math.sin(Date.now() * 0.003) * 0.12;
     }
   });
-
   return (
-    <group position={position}>
-      {/* Body cylinder */}
+    <group position={[position.x, 0, position.z]}>
+      {/* Body */}
       <mesh castShadow>
-        <cylinderGeometry args={[0.2, 0.2, 1.6, 12]} />
-        <meshStandardMaterial color={color} metalness={0.3} roughness={0.6} />
+        <cylinderGeometry args={[0.22, 0.22, 1.7, 12]} />
+        <meshStandardMaterial color={color} metalness={0.2} roughness={0.7} emissive={color} emissiveIntensity={0.15} />
       </mesh>
       {/* Head */}
-      <mesh ref={meshRef} castShadow>
-        <sphereGeometry args={[0.25]} />
-        <meshStandardMaterial color={color} metalness={0.3} roughness={0.6} />
+      <mesh ref={headRef} position={[0, 0.9, 0]} castShadow>
+        <sphereGeometry args={[0.27, 16, 16]} />
+        <meshStandardMaterial color={color} metalness={0.2} roughness={0.7} emissive={color} emissiveIntensity={0.15} />
       </mesh>
-      {/* Glow ring */}
-      <mesh position={[0, 0, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[0.35, 0.45, 32]} />
-        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={1.5} transparent opacity={0.7} />
+      {/* Ground pulse ring */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]}>
+        <ringGeometry args={[0.3, 0.42, 32]} />
+        <meshBasicMaterial color={color} transparent opacity={0.6} />
       </mesh>
       {/* Label */}
-      <Html position={[0, 2.2, 0]} center>
-        <div
-          className="text-2xs font-bold px-2 py-0.5 rounded whitespace-nowrap border"
-          style={{ backgroundColor: color + '33', borderColor: color, color }}
-        >
+      <Html position={[0, 2.6, 0]} center distanceFactor={12}>
+        <div style={{
+          fontSize: '11px', fontFamily: 'monospace', fontWeight: 'bold',
+          whiteSpace: 'nowrap', pointerEvents: 'none',
+          padding: '2px 8px', borderRadius: '4px',
+          background: color + '33', color, border: `1px solid ${color}66`,
+        }}>
           {label}
         </div>
       </Html>
@@ -156,216 +138,227 @@ function SuspectMarker({
   );
 }
 
-// ── Movement path ─────────────────────────────────────────────────────────────
-function SuspectPath({ waypoints, color, progress }: { waypoints: [number,number,number][]; color: string; progress: number }) {
-  const linePoints = waypoints.map(p => new THREE.Vector3(...p));
+// ── Path trail ────────────────────────────────────────────────────────────────
+function PathTrail({ waypoints, color, progress }: {
+  waypoints: [number,number,number][];
+  color: string;
+  progress: number;
+}) {
+  const position = lerpPath(waypoints, progress);
+  const segments = waypoints.length - 1;
+  const scaled = Math.max(0, Math.min(1, progress)) * segments;
+  const idx = Math.min(Math.floor(scaled), segments - 1);
 
-  // Interpolate current position along path
-  const totalSegments = waypoints.length - 1;
-  const globalT = progress * totalSegments;
-  const segIdx = Math.min(Math.floor(globalT), totalSegments - 1);
-  const segT = globalT - segIdx;
-  const a = new THREE.Vector3(...waypoints[segIdx]);
-  const b = new THREE.Vector3(...waypoints[Math.min(segIdx + 1, waypoints.length - 1)]);
-  const pos = a.lerp(b, segT);
+  const travelledPoints = useMemo(() => {
+    const pts: THREE.Vector3[] = [];
+    for (let i = 0; i <= idx; i++) pts.push(new THREE.Vector3(...waypoints[i]));
+    pts.push(position);
+    return pts;
+  }, [idx, position, waypoints]);
+
+  const allPoints = useMemo(() =>
+    waypoints.map(p => new THREE.Vector3(...p)),
+    [waypoints]
+  );
 
   return (
     <>
-      {/* Full path */}
-      <Line points={linePoints} color={color} lineWidth={1.5} dashed dashScale={2} opacity={0.4} transparent />
-      {/* Travelled path */}
-      {segIdx > 0 && (
-        <Line
-          points={[...waypoints.slice(0, segIdx + 1).map(p => new THREE.Vector3(...p)), pos]}
-          color={color}
-          lineWidth={3}
-          opacity={0.9}
-          transparent
-        />
+      {/* Ghost path */}
+      <Line points={allPoints} color={color} lineWidth={1} opacity={0.2} transparent />
+      {/* Travelled */}
+      {travelledPoints.length >= 2 && (
+        <Line points={travelledPoints} color={color} lineWidth={3} opacity={0.9} transparent />
       )}
-      {/* Current position marker */}
-      <SuspectMarker position={[pos.x, pos.y, pos.z]} label={color === '#F59E0B' ? 'Suspect α' : 'Suspect β'} color={color} />
+      {/* Moving figure */}
+      <SuspectFigure position={position} color={color} label={color === '#f59e0b' ? 'Suspect α' : 'Suspect β'} />
     </>
   );
 }
 
-// ── Floor plan ────────────────────────────────────────────────────────────────
+// ── Station floor ─────────────────────────────────────────────────────────────
 function StationFloor() {
   return (
     <group>
       {/* Main floor */}
-      <mesh receiveShadow position={[0, -0.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[30, 24]} />
-        <meshStandardMaterial color="#0D1526" metalness={0.1} roughness={0.9} />
+      <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.02, 0]}>
+        <planeGeometry args={[32, 26]} />
+        <meshStandardMaterial color="#0a0f1e" metalness={0.05} roughness={0.95} />
       </mesh>
-      {/* Platform */}
-      <mesh receiveShadow position={[4, 0.01, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[8, 6]} />
-        <meshStandardMaterial color="#161D2F" />
+      {/* Platform raised area */}
+      <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]} position={[4, 0.01, 0]}>
+        <planeGeometry args={[10, 7]} />
+        <meshStandardMaterial color="#111825" />
       </mesh>
+      {/* Platform edge line */}
+      <mesh position={[-1, 0.02, 0]}>
+        <boxGeometry args={[0.1, 0.04, 7]} />
+        <meshStandardMaterial color="#f59e0b" emissive="#f59e0b" emissiveIntensity={0.8} />
+      </mesh>
+      {/* Pillars */}
+      {[-2.5, 0, 2.5, 5, 7.5].map((x, i) => (
+        <mesh key={i} position={[x, 1.5, -2.5]} castShadow>
+          <cylinderGeometry args={[0.18, 0.18, 3.2, 10]} />
+          <meshStandardMaterial color="#141d2f" metalness={0.5} roughness={0.6} />
+        </mesh>
+      ))}
       {/* Walls */}
-      {[
-        { pos: [-15, 2, 0] as [number,number,number], rot: [0, Math.PI / 2, 0] as [number,number,number], size: [24, 4] as [number,number] },
-        { pos: [15, 2, 0] as [number,number,number],  rot: [0, -Math.PI / 2, 0] as [number,number,number], size: [24, 4] as [number,number] },
-        { pos: [0, 2, 12] as [number,number,number],  rot: [0, Math.PI, 0] as [number,number,number], size: [30, 4] as [number,number] },
-        { pos: [0, 2, -12] as [number,number,number], rot: [0, 0, 0] as [number,number,number], size: [30, 4] as [number,number] },
-      ].map((w, i) => (
-        <mesh key={i} position={w.pos} rotation={w.rot}>
-          <planeGeometry args={w.size} />
-          <meshStandardMaterial color="#0A0F1E" side={THREE.BackSide} />
-        </mesh>
-      ))}
-      {/* Platform pillars */}
-      {[-2, 0, 2, 4, 6].map((x, i) => (
-        <mesh key={i} position={[x, 1.5, -2]} castShadow>
-          <cylinderGeometry args={[0.15, 0.15, 3, 8]} />
-          <meshStandardMaterial color="#1E2840" metalness={0.5} roughness={0.5} />
-        </mesh>
-      ))}
+      <mesh position={[0, 2, -13]} rotation={[0, 0, 0]}>
+        <boxGeometry args={[32, 4, 0.15]} />
+        <meshStandardMaterial color="#080d1a" />
+      </mesh>
+      <mesh position={[0, 2, 13]} rotation={[0, Math.PI, 0]}>
+        <boxGeometry args={[32, 4, 0.15]} />
+        <meshStandardMaterial color="#080d1a" />
+      </mesh>
       {/* Grid overlay */}
       <Grid
         position={[0, 0, 0]}
-        args={[30, 24]}
+        args={[32, 26]}
         cellSize={2}
-        cellThickness={0.3}
-        cellColor="#00B4D820"
-        sectionSize={6}
-        sectionThickness={0.6}
-        sectionColor="#00B4D840"
-        fadeDistance={40}
+        cellThickness={0.4}
+        cellColor="#00b4d815"
+        sectionSize={8}
+        sectionThickness={0.8}
+        sectionColor="#00b4d830"
+        fadeDistance={35}
         fadeStrength={1}
-        followCamera={false}
         infiniteGrid={false}
       />
-      {/* Zone labels */}
-      <Text position={[-6, 0.1, 4]} rotation={[-Math.PI/2, 0, 0]} fontSize={0.5} color="#00B4D850" font="/fonts/JetBrainsMono.ttf">
-        CONCOURSE
-      </Text>
-      <Text position={[4, 0.1, 0]} rotation={[-Math.PI/2, 0, 0]} fontSize={0.5} color="#00B4D850">
-        PLATFORM 4
-      </Text>
-      <Text position={[-8, 0.1, 7]} rotation={[-Math.PI/2, 0, 0]} fontSize={0.4} color="#00B4D840">
-        SOUTH ENTRANCE
-      </Text>
+      {/* Zone label planes */}
+      {[
+        { text: 'PLATFORM 4',    pos: [4, 0.05, 0]  as [number,number,number] },
+        { text: 'CONCOURSE',     pos: [-5, 0.05, 0] as [number,number,number] },
+        { text: 'SOUTH ENTRANCE',pos: [-9, 0.05, 5] as [number,number,number] },
+      ].map(({ text, pos }) => (
+        <Html key={text} position={pos} rotation={[-Math.PI / 2, 0, 0]} center distanceFactor={20}>
+          <div style={{
+            fontSize: '9px', fontFamily: 'monospace', letterSpacing: '0.2em',
+            color: 'rgba(0,180,216,0.35)', pointerEvents: 'none',
+          }}>
+            {text}
+          </div>
+        </Html>
+      ))}
     </group>
   );
 }
 
-// ── Heatmap plane ─────────────────────────────────────────────────────────────
+// ── Heatmap ───────────────────────────────────────────────────────────────────
 function HeatmapPlane() {
   const texture = useMemo(() => {
+    if (typeof window === 'undefined') return null;
     const size = 256;
     const canvas = document.createElement('canvas');
     canvas.width = canvas.height = size;
     const ctx = canvas.getContext('2d')!;
-    // Background
-    ctx.fillStyle = 'transparent';
-    ctx.fillRect(0, 0, size, size);
-    // Hotspot near platform
-    const addHotspot = (cx: number, cy: number, r: number, intensity: number) => {
+    ctx.clearRect(0, 0, size, size);
+    const addHot = (cx: number, cy: number, r: number, opacity: number, colorStop: string) => {
       const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
-      g.addColorStop(0, `rgba(239,68,68,${intensity})`);
-      g.addColorStop(0.4, `rgba(245,158,11,${intensity * 0.5})`);
+      g.addColorStop(0, `rgba(${colorStop},${opacity})`);
+      g.addColorStop(0.5, `rgba(${colorStop},${opacity * 0.4})`);
       g.addColorStop(1, 'transparent');
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, size, size);
     };
-    addHotspot(180, 128, 60, 0.6);  // Platform 4 hotspot
-    addHotspot(80, 100, 40, 0.3);   // Ticketing area
-    addHotspot(30, 140, 30, 0.2);   // South entrance
+    addHot(175, 128, 55, 0.7, '239,68,68');
+    addHot(90, 110, 38, 0.35, '245,158,11');
+    addHot(30, 145, 28, 0.2, '245,158,11');
     return new THREE.CanvasTexture(canvas);
   }, []);
 
+  if (!texture) return null;
   return (
-    <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-      <planeGeometry args={[30, 24]} />
-      <meshBasicMaterial map={texture} transparent opacity={0.5} depthWrite={false} />
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, 0]}>
+      <planeGeometry args={[32, 26]} />
+      <meshBasicMaterial map={texture} transparent opacity={0.45} depthWrite={false} />
     </mesh>
   );
 }
 
-// ── Main 3D scene ─────────────────────────────────────────────────────────────
+// ── Scene ─────────────────────────────────────────────────────────────────────
 function Scene({ progress }: { progress: number }) {
   return (
     <>
-      <ambientLight intensity={0.3} color="#1a2744" />
-      <directionalLight position={[10, 20, 10]} intensity={0.8} color="#60a5fa" castShadow />
-      <pointLight position={[4, 4, 0]} intensity={1.5} color="#F59E0B" distance={8} />
-      <pointLight position={[-5, 4, 0]} intensity={0.5} color="#00B4D8" distance={12} />
-
+      <ambientLight intensity={0.25} color="#1a2744" />
+      <directionalLight position={[10, 20, 10]} intensity={0.7} color="#6da8ff" castShadow
+        shadow-mapSize={[1024, 1024]} />
+      <pointLight position={[5, 5, 0]} intensity={1.8} color="#f59e0b" distance={10} />
+      <pointLight position={[-5, 4, 0]} intensity={0.6} color="#00b4d8" distance={14} />
+      <pointLight position={[9, 3, -4]} intensity={0.5} color="#22c55e" distance={8} />
       <StationFloor />
       <HeatmapPlane />
-
-      {/* Cameras */}
-      {CAMERAS.map((cam) => (
-        <CameraModel key={cam.id} cam={cam} active={cam.activeSuspects > 0} />
-      ))}
-
-      {/* Suspect paths */}
-      <SuspectPath waypoints={ALPHA_WAYPOINTS} color="#F59E0B" progress={progress} />
-      <SuspectPath waypoints={BETA_WAYPOINTS} color="#FB923C" progress={progress} />
-
+      {CAMERAS.map(cam => <CameraModel key={cam.id} cam={cam} />)}
+      <PathTrail waypoints={ALPHA_PATH} color="#f59e0b" progress={progress} />
+      <PathTrail waypoints={BETA_PATH} color="#fb923c" progress={progress} />
       <OrbitControls
+        enableDamping dampingFactor={0.06}
+        minPolarAngle={0.1} maxPolarAngle={Math.PI / 2.1}
+        minDistance={5} maxDistance={40}
         makeDefault
-        minPolarAngle={0}
-        maxPolarAngle={Math.PI / 2.2}
-        minDistance={4}
-        maxDistance={35}
-        enableDamping
-        dampingFactor={0.05}
       />
     </>
   );
 }
 
-// ── Public component ──────────────────────────────────────────────────────────
-export function SceneViewer3D({ currentTime, className }: SceneViewerProps) {
-  const progress = currentTime; // 0-1 normalised timeline position
-
+// ── Legend overlay ────────────────────────────────────────────────────────────
+function SceneLegend() {
   return (
-    <div className={cn('relative w-full h-full rounded-xl overflow-hidden bg-[#050911] border border-border', className ?? '')}>
-      {/* Legend */}
-      <div className="absolute top-3 left-3 z-10 space-y-1.5">
-        {[
-          { color: '#F59E0B', label: 'Suspect α' },
-          { color: '#FB923C', label: 'Suspect β' },
-          { color: '#00B4D8', label: 'Camera' },
-          { color: '#EF4444', label: 'Dwell zone' },
-        ].map((item) => (
-          <div key={item.label} className="flex items-center gap-1.5 text-2xs font-mono text-white/70 bg-black/50 px-2 py-0.5 rounded backdrop-blur-sm">
-            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }} />
-            {item.label}
-          </div>
-        ))}
-      </div>
-
-      {/* Badge */}
-      <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5 text-2xs font-mono bg-black/60 text-accent px-2 py-1 rounded border border-accent/30 backdrop-blur-sm">
-        <BoxIcon className="w-3 h-3" />
-        3D RECONSTRUCTION
-      </div>
-
-      {/* Instructions */}
-      <div className="absolute bottom-3 left-3 z-10 text-2xs text-white/40 font-mono">
-        Drag to orbit · Scroll to zoom · Right-click to pan
-      </div>
-
-      <Canvas
-        shadows
-        camera={{ position: [0, 18, 20], fov: 45, near: 0.1, far: 200 }}
-        gl={{ antialias: true, alpha: false, toneMapping: THREE.ACESFilmicToneMapping }}
-        dpr={[1, 1.5]}
-      >
-        <color attach="background" args={['#050911']} />
-        <fog attach="fog" args={['#050911', 30, 60]} />
-        <Suspense fallback={null}>
-          <Scene progress={progress} />
-        </Suspense>
-      </Canvas>
+    <div className="absolute top-3 left-3 z-10 space-y-1.5 pointer-events-none">
+      {[
+        { color: '#f59e0b', label: 'Suspect α — Primary' },
+        { color: '#fb923c', label: 'Suspect β — Lookout' },
+        { color: '#00b4d8', label: 'Camera node' },
+        { color: '#ef4444', label: 'High dwell zone' },
+      ].map(item => (
+        <div key={item.label} className="flex items-center gap-2 text-2xs font-mono bg-black/65 text-white/70 px-2 py-1 rounded-md backdrop-blur-sm">
+          <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: item.color, boxShadow: `0 0 6px ${item.color}` }} />
+          {item.label}
+        </div>
+      ))}
     </div>
   );
 }
 
-function cn(...c: (string | undefined | false)[]) {
-  return c.filter(Boolean).join(' ');
+// ── Public export ─────────────────────────────────────────────────────────────
+interface SceneViewerProps { currentTime: number; className?: string; }
+
+export function SceneViewer3D({ currentTime, className = '' }: SceneViewerProps) {
+  const [ready, setReady] = useState(false);
+  useEffect(() => { setReady(true); }, []);
+
+  if (!ready) {
+    return (
+      <div className={`relative w-full h-full rounded-xl bg-[#050911] border border-border flex items-center justify-center ${className}`}>
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+          <p className="text-xs text-muted-foreground font-mono">Initialising 3D engine...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`relative w-full h-full rounded-xl overflow-hidden bg-[#050911] border border-border ${className}`}>
+      <SceneLegend />
+      {/* Badge */}
+      <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5 text-2xs font-mono bg-black/65 text-accent px-2.5 py-1 rounded-md border border-accent/25 backdrop-blur-sm pointer-events-none">
+        <BoxIcon className="w-3 h-3" /> 3D RECONSTRUCTION
+      </div>
+      {/* Controls hint */}
+      <div className="absolute bottom-3 right-3 z-10 text-2xs text-white/30 font-mono pointer-events-none">
+        Drag · Scroll · Right-click
+      </div>
+      <Canvas
+        shadows
+        camera={{ position: [0, 16, 22], fov: 42, near: 0.1, far: 200 }}
+        gl={{ antialias: true, alpha: false, toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 0.9 }}
+        dpr={typeof window !== 'undefined' ? Math.min(window.devicePixelRatio, 1.5) : 1}
+        onCreated={({ gl }) => { gl.setClearColor('#050911'); }}
+      >
+        <Suspense fallback={null}>
+          <Scene progress={currentTime} />
+        </Suspense>
+      </Canvas>
+    </div>
+  );
 }

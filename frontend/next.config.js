@@ -1,11 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'standalone',
   reactStrictMode: true,
   images: {
     domains: ['localhost', 's3.amazonaws.com', 'picsum.photos'],
     formats: ['image/avif', 'image/webp'],
   },
+  transpilePackages: ['@xyflow/react', '@xyflow/system'],
   experimental: {
     optimizePackageImports: ['lucide-react', 'framer-motion', 'recharts'],
   },
