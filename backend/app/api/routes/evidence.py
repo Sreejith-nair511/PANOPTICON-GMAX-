@@ -7,8 +7,10 @@ import uuid
 import hashlib
 import os
 import logging
+import threading
 import aiofiles
 
+from app.celery_app import celery_app
 from app.db.base import get_db
 from app.models.evidence import Evidence
 from app.models.case import Case
@@ -147,6 +149,17 @@ async def get_detections(
     )
 
 
+def _celery_worker_available() -> bool:
+    try:
+        inspector = celery_app.control.inspect(timeout=2.0)
+        if not inspector:
+            return False
+        ping = inspector.ping()
+        return bool(ping)
+    except Exception:
+        return False
+
+
 @router.post("/{evidence_id}/process", status_code=202)
 async def trigger_processing(
     evidence_id: str,
@@ -162,15 +175,25 @@ async def trigger_processing(
     job_id = str(uuid.uuid4())
     await db.flush()
 
-    # Dispatch Celery task for async AI processing
-    try:
-        from app.tasks.video_processing import process_evidence_task
-        task = process_evidence_task.delay(evidence_id, job_id)
-        logger.info(f"Dispatched Celery task {task.id} for evidence {evidence_id}, job {job_id}")
-    except Exception as exc:
-        logger.warning(f"Celery dispatch failed ({exc}). Evidence marked as processing but no worker running.")
+    from app.tasks.video_processing import process_evidence_task, _process_evidence_job
 
-    return {"message": "Processing queued", "evidence_id": evidence_id, "job_id": job_id}
+    if _celery_worker_available():
+        try:
+            task = process_evidence_task.delay(evidence_id, job_id)
+            logger.info(f"Dispatched Celery task {task.id} for evidence {evidence_id}, job {job_id}")
+            return {"message": "Processing queued", "evidence_id": evidence_id, "job_id": job_id}
+        except Exception as exc:
+            logger.warning(f"Celery dispatch failed ({exc}). Falling back to local execution.")
+
+    def _run_local():
+        try:
+            _process_evidence_job(evidence_id, job_id)
+        except Exception as exc:
+            logger.error(f"Local evidence processing failed for {evidence_id}: {exc}", exc_info=True)
+
+    threading.Thread(target=_run_local, daemon=True).start()
+    logger.info(f"No Celery worker detected; running evidence processing locally for {evidence_id}, job {job_id}")
+    return {"message": "Processing started locally", "evidence_id": evidence_id, "job_id": job_id}
 
 
 @router.delete("/{evidence_id}", status_code=204)

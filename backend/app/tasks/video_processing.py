@@ -40,21 +40,17 @@ def _get_pipeline():
     return _inference_pipeline
 
 
-@celery_app.task(bind=True, name="process_evidence", max_retries=3)
-def process_evidence_task(self, evidence_id: str, job_id: str) -> dict:
-    """
-    Process a single evidence file through the full PANOPTICON AI pipeline:
-    1. Frame extraction
-    2. Object detection (YOLOv8)
-    3. Multi-object tracking (ByteTrack)
-    4. Instance segmentation (SAM 2)
-    5. Person re-identification (FastReID)
-    6. Results aggregation and storage
-    """
+def _process_evidence_job(evidence_id: str, job_id: str, task_self=None) -> dict:
     logger.info(f"[{job_id}] Starting processing for evidence {evidence_id}")
 
+    def progress_callback(pct: int, step: str):
+        if task_self is not None:
+            task_self.update_state(
+                state="PROGRESS",
+                meta={"progress": pct, "current_step": step, "job_id": job_id},
+            )
+
     try:
-        # ── Resolve file path ──────────────────────────────────────────────
         from sqlalchemy import create_engine, text
         from sqlalchemy.orm import sessionmaker
 
@@ -75,7 +71,6 @@ def process_evidence_task(self, evidence_id: str, job_id: str) -> dict:
             logger.warning(f"Could not load evidence from DB: {db_exc}. Using path heuristic.")
 
         if not os.path.exists(file_path):
-            # Try any extension
             for ext in (".mp4", ".avi", ".mov", ".mkv", ".jpg", ".jpeg", ".png"):
                 candidate = os.path.join(settings.LOCAL_STORAGE_PATH, f"{evidence_id}{ext}")
                 if os.path.exists(candidate):
@@ -85,14 +80,6 @@ def process_evidence_task(self, evidence_id: str, job_id: str) -> dict:
         if not os.path.exists(file_path):
             raise FileNotFoundError(f"Evidence file not found: {file_path}")
 
-        # ── Progress callback ──────────────────────────────────────────────
-        def progress_callback(pct: int, step: str):
-            self.update_state(
-                state="PROGRESS",
-                meta={"progress": pct, "current_step": step, "job_id": job_id},
-            )
-
-        # ── Run inference pipeline ────────────────────────────────────────
         pipeline = _get_pipeline()
         output_dir = os.path.join(settings.LOCAL_STORAGE_PATH, "processing", evidence_id)
 
@@ -102,15 +89,11 @@ def process_evidence_task(self, evidence_id: str, job_id: str) -> dict:
             progress_callback=progress_callback,
         )
 
-        # ── Persist results to database ────────────────────────────────────
         try:
             engine = create_engine(sync_db_url)
             Session = sessionmaker(bind=engine)
             with Session() as session:
-                # Compute overall confidence
                 confidence = float(results.get("confidence", 0))
-
-                # Format results for JSONB storage
                 ai_results = {
                     "status": "completed",
                     "persons": results.get("persons", []),
@@ -119,12 +102,11 @@ def process_evidence_task(self, evidence_id: str, job_id: str) -> dict:
                     "timeline": results.get("timeline", []),
                     "confidence": confidence,
                     "processing_models": results.get("models_used", []),
-                    "detections": results.get("detections", [])[:100],  # Limit size
+                    "detections": results.get("detections", [])[:100],
                     "processing_time": results.get("processing_time", 0),
                     "generated_at": results.get("generated_at"),
                 }
 
-                # Generate synopsis
                 persons_count = len(results.get("persons", []))
                 objects = results.get("objects", {})
                 obj_str = ", ".join(f"{v} {k}" for k, v in list(objects.items())[:3])
@@ -151,26 +133,34 @@ def process_evidence_task(self, evidence_id: str, job_id: str) -> dict:
 
         except Exception as persist_exc:
             logger.error(f"Failed to persist AI results: {persist_exc}", exc_info=True)
-            # Don't fail the task — data was processed, just not stored
 
         logger.info(f"[{job_id}] Processing complete for evidence {evidence_id}")
 
-        self.update_state(state="SUCCESS", meta={"job_id": job_id, "evidence_id": evidence_id})
+        if task_self is not None:
+            task_self.update_state(state="SUCCESS", meta={"job_id": job_id, "evidence_id": evidence_id})
+
         return {
             "job_id": job_id,
             "evidence_id": evidence_id,
             "status": "completed",
-            "confidence": confidence,
-            "persons_detected": persons_count,
+            "confidence": float(results.get("confidence", 0)),
+            "persons_detected": len(results.get("persons", [])),
         }
 
     except FileNotFoundError as exc:
         logger.error(f"[{job_id}] File not found: {exc}")
-        self.update_state(state="FAILURE", meta={"error": str(exc), "job_id": job_id})
+        if task_self is not None:
+            task_self.update_state(state="FAILURE", meta={"error": str(exc), "job_id": job_id})
         raise
 
     except Exception as exc:
         logger.error(f"[{job_id}] Processing failed for evidence {evidence_id}: {exc}", exc_info=True)
-        self.update_state(state="FAILURE", meta={"error": str(exc), "job_id": job_id})
-        # Retry with exponential backoff
-        raise self.retry(exc=exc, countdown=60 * (2 ** self.request.retries))
+        if task_self is not None:
+            task_self.update_state(state="FAILURE", meta={"error": str(exc), "job_id": job_id})
+            raise task_self.retry(exc=exc, countdown=60 * (2 ** task_self.request.retries))
+        raise
+
+
+@celery_app.task(bind=True, name="process_evidence", max_retries=3)
+def process_evidence_task(self, evidence_id: str, job_id: str) -> dict:
+    return _process_evidence_job(evidence_id, job_id, task_self=self)
