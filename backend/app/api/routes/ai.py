@@ -11,12 +11,24 @@ from datetime import datetime, timezone
 import time
 import uuid
 import logging
+import base64
+import io
+import threading
+
+import cv2
+import numpy as np
+import requests
+from PIL import Image
+
+from app.celery_app import celery_app
 
 from app.db.base import get_db
 from app.models.case import Case
 from app.models.evidence import Evidence
 from app.core.security import get_current_user_id
 from app.core.config import settings
+
+from ai.models import get_registry
 
 logger = logging.getLogger("panopticon.ai")
 
@@ -68,9 +80,121 @@ class ProcessingJobResponse(BaseModel):
     estimated_completion: Optional[str] = None
 
 
+class FrameAnalysisRequest(BaseModel):
+    imageUrl: str
+
+
+class FrameAnalysisResponse(BaseModel):
+    people: List[dict]
+    objects: List[dict]
+    locationContext: str
+
+
+_shared_yolo_detector = None
+
+
+def _get_shared_detector():
+    global _shared_yolo_detector
+    if _shared_yolo_detector is None:
+        from ai.models.detector import YOLODetector
+        detector = YOLODetector(device='auto', confidence_threshold=settings.DETECTION_CONFIDENCE_THRESHOLD)
+        detector.load()
+        _shared_yolo_detector = detector
+    return _shared_yolo_detector
+
+
+def _decode_image(image_url: str) -> np.ndarray:
+    if image_url.startswith('data:image/'):
+        _, b64 = image_url.split(',', 1)
+        image_bytes = base64.b64decode(b64)
+    elif image_url.startswith('http://') or image_url.startswith('https://'):
+        response = requests.get(image_url, timeout=15)
+        response.raise_for_status()
+        image_bytes = response.content
+    else:
+        raise ValueError('Unsupported image URL format. Expected a data URL or HTTP(S) image URL.')
+
+    image = Image.open(io.BytesIO(image_bytes)).convert('RGB')
+    frame = np.array(image)[:, :, ::-1]
+    return frame
+
+
+def _label_to_object_type(label: str) -> str:
+    label = label.lower()
+    if label in {'person'}:
+        return 'person'
+    if label in {'backpack', 'handbag', 'suitcase'}:
+        return 'bag'
+    if label in {'laptop', 'cell phone', 'keyboard', 'mouse'}:
+        return 'electronics'
+    if label in {'car', 'truck', 'bus', 'motorcycle', 'bicycle'}:
+        return 'vehicle'
+    if label in {'knife', 'scissors'}:
+        return 'weapon'
+    return 'other'
+
+
+def _format_detection(det: dict) -> dict:
+    label = det.get('label', 'unknown')
+    confidence = int(round(det.get('confidence', 0) * 100))
+    object_type = _label_to_object_type(label)
+    return {
+        'label': label,
+        'type': object_type,
+        'description': label.title(),
+        'confidence': max(0, min(100, confidence)),
+    }
+
+
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
+
+@router.post("/analyze-frame", response_model=FrameAnalysisResponse)
+async def analyze_frame(payload: FrameAnalysisRequest):
+    try:
+        frame = _decode_image(payload.imageUrl)
+
+        detector = _get_shared_detector()
+        results = detector.infer([frame])[0]
+
+        people = []
+        objects = []
+        for det in results:
+            label = det.get('label', 'unknown')
+            confidence = int(round(det.get('confidence', 0) * 100))
+            if label == 'person':
+                people.append({
+                    'description': 'Person detected',
+                    'confidence': confidence,
+                })
+            else:
+                objects.append({
+                    'type': _label_to_object_type(label),
+                    'description': label.title(),
+                    'confidence': confidence,
+                })
+
+        if not people and not objects:
+            location_context = 'No people or forensic objects detected in this frame.'
+        else:
+            detected_types = []
+            if people:
+                detected_types.append(f'{len(people)} person(s)')
+            if objects:
+                detected_types.append(f'{len(objects)} object(s)')
+            location_context = f"Detected {' and '.join(detected_types)} in the current frame."
+
+        return {
+            'people': people,
+            'objects': objects,
+            'locationContext': location_context,
+        }
+
+    except Exception as exc:
+        logger.error(f'Frame analysis failed: {exc}', exc_info=True)
+        raise HTTPException(status_code=500, detail=str(exc))
+
 
 @router.post("/chat", response_model=ChatResponse)
 async def chat(
@@ -133,6 +257,17 @@ async def chat(
     )
 
 
+def _celery_worker_available() -> bool:
+    try:
+        inspector = celery_app.control.inspect(timeout=2.0)
+        if not inspector:
+            return False
+        ping = inspector.ping()
+        return bool(ping)
+    except Exception:
+        return False
+
+
 @router.post("/process/{evidence_id}", response_model=ProcessingJobResponse, status_code=202)
 async def start_processing(
     evidence_id: str,
@@ -148,18 +283,35 @@ async def start_processing(
     job_id = str(uuid.uuid4())
     await db.flush()
 
-    # Dispatch Celery task for async AI processing
-    try:
-        from app.tasks.video_processing import process_evidence_task
-        task = process_evidence_task.delay(evidence_id, job_id)
-        logger.info(f"Dispatched Celery task {task.id} for evidence {evidence_id}, job {job_id}")
-    except Exception as exc:
-        logger.warning(f"Celery dispatch failed ({exc}). Evidence marked as processing but no worker running.")
+    from app.tasks.video_processing import process_evidence_task, _process_evidence_job
 
+    if _celery_worker_available():
+        try:
+            task = process_evidence_task.delay(evidence_id, job_id)
+            logger.info(f"Dispatched Celery task {task.id} for evidence {evidence_id}, job {job_id}")
+            return ProcessingJobResponse(
+                job_id=job_id,
+                evidence_id=evidence_id,
+                status="queued",
+                progress=0,
+                started_at=datetime.now(timezone.utc).isoformat(),
+                estimated_completion=None,
+            )
+        except Exception as exc:
+            logger.warning(f"Celery dispatch failed ({exc}). Falling back to local execution.")
+
+    def _run_local():
+        try:
+            _process_evidence_job(evidence_id, job_id)
+        except Exception as exc:
+            logger.error(f"Local AI processing failed for {evidence_id}: {exc}", exc_info=True)
+
+    threading.Thread(target=_run_local, daemon=True).start()
+    logger.info(f"No Celery worker detected; running evidence processing locally for {evidence_id}, job {job_id}")
     return ProcessingJobResponse(
         job_id=job_id,
         evidence_id=evidence_id,
-        status="queued",
+        status="processing",
         progress=0,
         started_at=datetime.now(timezone.utc).isoformat(),
         estimated_completion=None,
